@@ -1,9 +1,11 @@
 /**
  * JWT Token Manager
  * Handles access & refresh token storage, validation, and lifecycle
+ * Automatically syncs tokens to cookies for middleware access
  */
 
 import { jwtDecode } from 'jwt-decode';
+import { setAuthCookies, clearAuthCookies } from './auth-cookies';
 
 // ==================== TYPES ====================
 
@@ -81,10 +83,13 @@ class TokenStorage {
 
   /**
    * Set both tokens
+   * Also syncs to cookies for middleware access
    */
   setTokens(tokens: Tokens): void {
     this.setAccessToken(tokens.accessToken);
     this.setRefreshToken(tokens.refreshToken);
+    // Sync to cookies for middleware
+    setAuthCookies(tokens.accessToken, tokens.refreshToken);
   }
 
   /**
@@ -117,10 +122,13 @@ class TokenStorage {
 
   /**
    * Clear all tokens
+   * Also clears cookies
    */
   clearTokens(): void {
     this.removeAccessToken();
     this.removeRefreshToken();
+    // Clear cookies
+    clearAuthCookies();
   }
 
   /**

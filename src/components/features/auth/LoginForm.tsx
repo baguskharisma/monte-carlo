@@ -1,10 +1,10 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { z } from "zod"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm, SubmitHandler } from "react-hook-form"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { AxiosError } from "axios"
 
 import { Button } from "@/components/ui/button"
@@ -12,7 +12,7 @@ import { Input } from "@/components/ui/input"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Label } from "@/components/ui/label"
 import { Eye, EyeOff, Loader2 } from "lucide-react"
-import { login } from "@/services/auth.service"
+import { useAuth } from "@/hooks/use-auth"
 
 // ----------------------
 // Validation Schema
@@ -49,11 +49,16 @@ interface LoginFormProps {
 // ----------------------
 export default function LoginForm({
   onSuccess,
-  redirectTo = "/",
+  redirectTo,
 }: LoginFormProps) {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const { login: authLogin, redirectToDashboard } = useAuth()
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
+
+  // Get return URL from query params (set by middleware)
+  const returnUrl = searchParams.get('returnUrl')
 
   const form = useForm<LoginFormSubmit>({
     resolver: zodResolver(loginSchema),
@@ -68,14 +73,26 @@ export default function LoginForm({
     try {
       setIsLoading(true)
 
-      // Login using auth service (automatically stores tokens)
-      await login(values.phone, values.password)
+      // Login using useAuth hook (automatically stores tokens and syncs to cookies)
+      await authLogin(values.phone, values.password)
 
       // Call success callback if provided
       onSuccess?.()
 
-      // Redirect to destination
-      router.push(redirectTo)
+      // Priority: returnUrl > redirectTo prop > role-based dashboard
+      if (returnUrl) {
+        // User was redirected from a protected route - send them back
+        router.push(returnUrl)
+      } else if (redirectTo) {
+        // Custom redirect provided via props
+        router.push(redirectTo)
+      } else {
+        // Default: redirect to role-appropriate dashboard
+        // Super Admin/Admin → /admin/dashboard
+        // Driver → /driver/dashboard
+        // Customer → /customer/dashboard
+        redirectToDashboard()
+      }
     } catch (err) {
       console.error("Login error:", err)
 

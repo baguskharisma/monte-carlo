@@ -149,15 +149,25 @@ const isLoading = schedulesApi.loading || routesApi.loading || vehiclesApi.loadi
 
 ## 🔐 useAuth
 
-Hook untuk authentication dengan auto-check token dan user management.
+Hook untuk authentication dengan auto-check token, user management, dan **role detection**.
+
+### Features
+
+- ✅ User authentication state management
+- ✅ Login, register, logout functionality
+- ✅ **Role detection** (Super Admin, Admin, Driver, Customer)
+- ✅ **Role-based access control**
+- ✅ **Navigation helpers** for role-based routing
+- ✅ Token management integration
 
 ### Import
 
 ```typescript
 import { useAuth } from '@/hooks/use-auth';
+import { UserRole } from '@/lib/api-types';
 ```
 
-### Usage
+### Basic Usage
 
 ```typescript
 'use client';
@@ -205,17 +215,36 @@ export function LoginPage() {
 }
 ```
 
-### API
+### Complete API
 
 ```typescript
 const {
+  // User & Auth State
   user,              // User | null: Current user
   isAuthenticated,   // boolean: Is user authenticated
   loading,           // boolean: Loading state
+
+  // Auth Actions
   login,             // Function: Login user
   register,          // Function: Register user
   logout,            // Function: Logout user
   checkAuth,         // Function: Re-check authentication
+
+  // Role Detection
+  role,              // UserRole | null: Current user role
+  isSuperAdmin,      // boolean: Is Super Admin
+  isAdmin,           // boolean: Is Admin (includes Super Admin)
+  isDriver,          // boolean: Is Driver
+  isCustomer,        // boolean: Is Customer
+  hasRole,           // Function: Check specific role
+  hasAnyRole,        // Function: Check if has any of roles
+  hasAllRoles,       // Function: Check if has all roles
+
+  // Navigation Helpers
+  redirectToDashboard,  // Function: Redirect to role-appropriate dashboard
+  requireAuth,          // Function: Require authentication (redirect if not)
+  requireRole,          // Function: Require specific role
+  requireAnyRole,       // Function: Require any of specified roles
 } = useAuth();
 ```
 
@@ -231,24 +260,122 @@ useEffect(() => {
 
 ### Examples
 
-#### Example 1: Protected Route
+#### Example 1: Role Detection
 
 ```typescript
 'use client';
 
 import { useAuth } from '@/hooks/use-auth';
-import { useRouter } from 'next/navigation';
+import { UserRole } from '@/lib/api-types';
+
+export function Dashboard() {
+  const {
+    user,
+    role,
+    isSuperAdmin,
+    isAdmin,
+    isDriver,
+    isCustomer
+  } = useAuth();
+
+  return (
+    <div>
+      <h1>Dashboard</h1>
+      <p>User: {user?.phone}</p>
+      <p>Role: {role}</p>
+
+      {/* Super Admin Only */}
+      {isSuperAdmin && (
+        <div className="admin-panel">
+          <h2>Super Admin Panel</h2>
+          <button>Manage All Users</button>
+          <button>System Settings</button>
+        </div>
+      )}
+
+      {/* Admin & Super Admin */}
+      {isAdmin && (
+        <div className="admin-tools">
+          <h2>Admin Tools</h2>
+          <button>Manage Schedules</button>
+          <button>View Reports</button>
+        </div>
+      )}
+
+      {/* Driver Only */}
+      {isDriver && (
+        <div className="driver-panel">
+          <h2>Driver Panel</h2>
+          <button>My Trips</button>
+          <button>Update Status</button>
+        </div>
+      )}
+
+      {/* Customer Only */}
+      {isCustomer && (
+        <div className="customer-panel">
+          <h2>Customer Panel</h2>
+          <button>Book Ticket</button>
+          <button>My Bookings</button>
+        </div>
+      )}
+    </div>
+  );
+}
+```
+
+#### Example 2: Role-Based Access Control
+
+```typescript
+'use client';
+
+import { useAuth } from '@/hooks/use-auth';
+import { UserRole } from '@/lib/api-types';
+import { useEffect } from 'react';
+
+export function AdminPage() {
+  const { hasRole, hasAnyRole, requireAnyRole } = useAuth();
+
+  // Redirect if not admin
+  useEffect(() => {
+    requireAnyRole([UserRole.ADMIN, UserRole.SUPER_ADMIN], '/unauthorized');
+  }, [requireAnyRole]);
+
+  // Check specific role
+  const canDeleteUsers = hasRole(UserRole.SUPER_ADMIN);
+  const canManageSchedules = hasAnyRole([UserRole.ADMIN, UserRole.SUPER_ADMIN]);
+
+  return (
+    <div>
+      <h1>Admin Panel</h1>
+
+      {canManageSchedules && (
+        <button>Manage Schedules</button>
+      )}
+
+      {canDeleteUsers && (
+        <button className="danger">Delete Users</button>
+      )}
+    </div>
+  );
+}
+```
+
+#### Example 3: Protected Route with Auto-Redirect
+
+```typescript
+'use client';
+
+import { useAuth } from '@/hooks/use-auth';
 import { useEffect } from 'react';
 
 export function ProtectedPage() {
-  const { isAuthenticated, loading, user } = useAuth();
-  const router = useRouter();
+  const { isAuthenticated, loading, user, requireAuth } = useAuth();
 
+  // Redirect to login if not authenticated
   useEffect(() => {
-    if (!loading && !isAuthenticated) {
-      router.push('/login');
-    }
-  }, [isAuthenticated, loading, router]);
+    requireAuth('/login');
+  }, [requireAuth]);
 
   if (loading) {
     return <div>Loading...</div>;
@@ -261,13 +388,156 @@ export function ProtectedPage() {
   return (
     <div>
       <h1>Protected Content</h1>
-      <p>Welcome, {user?.name}!</p>
+      <p>Welcome, {user?.phone}!</p>
     </div>
   );
 }
 ```
 
-#### Example 2: Register Flow
+#### Example 4: Role-Based Dashboard Redirect
+
+```typescript
+'use client';
+
+import { useAuth } from '@/hooks/use-auth';
+import { useEffect } from 'react';
+
+export function HomePage() {
+  const { isAuthenticated, redirectToDashboard } = useAuth();
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      // Automatically redirect to appropriate dashboard based on role
+      // Super Admin / Admin → /admin/dashboard
+      // Driver → /driver/dashboard
+      // Customer → /customer/dashboard
+      redirectToDashboard();
+    }
+  }, [isAuthenticated, redirectToDashboard]);
+
+  return (
+    <div>
+      <h1>Welcome to Travel App</h1>
+      <p>Redirecting to your dashboard...</p>
+    </div>
+  );
+}
+```
+
+#### Example 5: Conditional Rendering by Multiple Roles
+
+```typescript
+'use client';
+
+import { useAuth } from '@/hooks/use-auth';
+import { UserRole } from '@/lib/api-types';
+
+export function TicketManagement() {
+  const { hasAnyRole, hasRole } = useAuth();
+
+  const canCreateTicket = hasAnyRole([
+    UserRole.ADMIN,
+    UserRole.SUPER_ADMIN,
+    UserRole.CUSTOMER
+  ]);
+
+  const canApprovePayment = hasAnyRole([
+    UserRole.ADMIN,
+    UserRole.SUPER_ADMIN
+  ]);
+
+  const canCancelAnyTicket = hasRole(UserRole.SUPER_ADMIN);
+
+  return (
+    <div>
+      <h1>Ticket Management</h1>
+
+      {canCreateTicket && (
+        <button>Create Ticket</button>
+      )}
+
+      {canApprovePayment && (
+        <button>Approve Payments</button>
+      )}
+
+      {canCancelAnyTicket && (
+        <button className="danger">Cancel Any Ticket</button>
+      )}
+    </div>
+  );
+}
+```
+
+#### Example 6: Role-Specific Navigation
+
+```typescript
+'use client';
+
+import { useAuth } from '@/hooks/use-auth';
+import Link from 'next/link';
+
+export function Navigation() {
+  const {
+    isAuthenticated,
+    isSuperAdmin,
+    isAdmin,
+    isDriver,
+    isCustomer,
+    logout
+  } = useAuth();
+
+  if (!isAuthenticated) {
+    return (
+      <nav>
+        <Link href="/login">Login</Link>
+        <Link href="/register">Register</Link>
+      </nav>
+    );
+  }
+
+  return (
+    <nav>
+      {/* Common links */}
+      <Link href="/">Home</Link>
+
+      {/* Admin links */}
+      {(isSuperAdmin || isAdmin) && (
+        <>
+          <Link href="/admin/dashboard">Admin Dashboard</Link>
+          <Link href="/admin/schedules">Manage Schedules</Link>
+          <Link href="/admin/users">Manage Users</Link>
+        </>
+      )}
+
+      {/* Super Admin only */}
+      {isSuperAdmin && (
+        <Link href="/admin/settings">System Settings</Link>
+      )}
+
+      {/* Driver links */}
+      {isDriver && (
+        <>
+          <Link href="/driver/dashboard">Driver Dashboard</Link>
+          <Link href="/driver/trips">My Trips</Link>
+        </>
+      )}
+
+      {/* Customer links */}
+      {isCustomer && (
+        <>
+          <Link href="/customer/dashboard">My Dashboard</Link>
+          <Link href="/customer/bookings">My Bookings</Link>
+          <Link href="/customer/book">Book Ticket</Link>
+        </>
+      )}
+
+      <button onClick={logout}>Logout</button>
+    </nav>
+  );
+}
+```
+
+#### Example 7: Register Flow
 
 ```typescript
 const { register, loading } = useAuth();
@@ -286,17 +556,6 @@ const handleRegister = async (formData: any) => {
   } catch (error) {
     alert('Registration failed');
   }
-};
-```
-
-#### Example 3: Logout
-
-```typescript
-const { logout } = useAuth();
-
-const handleLogout = async () => {
-  await logout();
-  // User logged out and redirected to /login
 };
 ```
 
