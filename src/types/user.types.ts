@@ -19,7 +19,7 @@ export type DriverStatus = 'AVAILABLE' | 'ON_TRIP' | 'OFF_DUTY';
  * Base User Profile Interface
  */
 export interface UserProfile {
-  fullName: string;
+  name: string; // Backend uses 'name' instead of 'fullName'
   gender: Gender;
   birthDate: string | null;
   address: string | null;

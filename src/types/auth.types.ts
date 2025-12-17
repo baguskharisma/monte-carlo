@@ -69,7 +69,7 @@ export interface AuthState {
  * Auth Actions for Zustand Store
  */
 export interface AuthActions {
-  login: (phone: string, password: string) => Promise<void>;
+  login: (phone: string, password: string, rememberMe?: boolean) => Promise<void>;
   logout: () => void;
   setUser: (user: User) => void;
   setTokens: (accessToken: string, refreshToken: string) => void;
@@ -99,6 +99,7 @@ export const loginSchema = z.object({
   phone: phoneSchema,
   password: z.string()
     .min(6, 'Password must be at least 6 characters'),
+  rememberMe: z.boolean(),
 });
 
 export type LoginFormData = z.infer<typeof loginSchema>;

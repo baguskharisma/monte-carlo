@@ -15,6 +15,7 @@ import { useAuthStore } from '@/stores/auth.store';
 import { loginSchema, type LoginFormData } from '@/types/auth.types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   Form,
   FormControl,
@@ -39,16 +40,23 @@ function LoginForm() {
     defaultValues: {
       phone: '',
       password: '',
+      rememberMe: false,
     },
   });
 
   const onSubmit = async (data: LoginFormData) => {
     try {
-      await login(data.phone, data.password);
+      await login(data.phone, data.password, data.rememberMe);
 
-      toast.success('Login successful!', {
-        description: 'Redirecting to dashboard...',
-      });
+      // Wait a bit for cookie to be set
+      await new Promise(resolve => setTimeout(resolve, 100));
+
+      // Get the user from store after login
+      const currentUser = useAuthStore.getState().user;
+
+      if (!currentUser) {
+        throw new Error('Failed to retrieve user data');
+      }
 
       // Redirect based on user role or redirectTo param
       const dashboardMap: Record<string, string> = {
@@ -57,12 +65,15 @@ function LoginForm() {
         DRIVER: '/driver/dashboard',
       };
 
-      // Get the user from store after login
-      const currentUser = useAuthStore.getState().user;
       const targetUrl =
         redirectTo || (currentUser?.role ? dashboardMap[currentUser.role] : '/');
 
-      router.push(targetUrl);
+      toast.success('Login successful!', {
+        description: `Redirecting to dashboard...`,
+      });
+
+      // Force full page reload to ensure middleware picks up the cookie
+      window.location.href = targetUrl;
     } catch (error) {
       toast.error('Login failed', {
         description: error instanceof Error ? error.message : 'Invalid credentials',
@@ -136,8 +147,25 @@ function LoginForm() {
             )}
           />
 
-          {/* Forgot Password Link */}
-          <div className="flex justify-end">
+          {/* Remember Me & Forgot Password */}
+          <div className="flex items-center justify-between">
+            <FormField
+              control={form.control}
+              name="rememberMe"
+              render={({ field }) => (
+                <FormItem className="flex items-center space-x-2 space-y-0">
+                  <FormControl>
+                    <Checkbox
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                    />
+                  </FormControl>
+                  <FormLabel className="text-sm font-normal cursor-pointer">
+                    Remember me
+                  </FormLabel>
+                </FormItem>
+              )}
+            />
             <Link
               href="/forgot-password"
               className="text-sm text-primary hover:underline"
