@@ -1,0 +1,3458 @@
+openapi: 3.0.3
+info:
+  title: Mobile Travel App API
+  description: |
+    Comprehensive REST API for Mobile Travel App Backend System
+
+    ## Features
+    - **OTP Verification**: WhatsApp-based OTP verification using Twilio for secure registration
+    - **User Management**: Complete CRUD for Admins, Customers, and Drivers with profile image support
+    - **Payment Proof System**: Upload and verification workflow for customer bookings (Nov 2025)
+    - **Coin System**: Top-up requests and transaction tracking with admin-specific endpoints
+    - **Route & Vehicle Management**: Travel routes and vehicle fleet with image upload
+    - **Schedule Management**: Trip scheduling with conflict detection and cost tracking
+    - **Ticket Booking**: Passenger booking with seat selection and payment proof integration
+    - **Travel Documents**: Digital travel permits with PDF generation
+    - **Driver Panel**: Real-time trip tracking and passenger management
+    - **Trip Logs**: Complete audit trail of all trips
+
+    ## Authentication & OTP
+    - All endpoints require JWT Bearer token authentication unless marked as public
+    - Customer registration requires OTP verification via WhatsApp (can be disabled)
+    - Password reset via OTP verification through WhatsApp
+    - OTP valid for 5 minutes with 3 verification attempts
+
+    ## Coin System
+    - Ticket booking: 10,000 coins per passenger
+    - Travel document: 10,000 coins per document
+
+    ## Payment Proof Flow
+    Customer uploads payment proof → Admin reviews → Approve creates ticket automatically
+
+    ## OTP Registration Flow (Optional - Can be Disabled)
+    1. Send OTP to phone number (`POST /otp/send`)
+    2. Verify OTP code (`POST /otp/verify`)
+    3. Register with verified phone (`POST /auth/register`)
+
+    ## Password Reset Flow
+    1. Request password reset (`POST /auth/forgot-password`)
+    2. Receive OTP code via WhatsApp
+    3. Reset password with OTP (`POST /auth/reset-password`)
+
+  version: 2.0.0
+  contact:
+    name: API Support
+    email: support@travelapp.com
+    url: https://github.com
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: http://localhost:3001/api/v1
+    description: Local Development
+  - url: https://api.travelapp.com/api/v1
+    description: Production
+
+tags:
+  - name: OTP Verification
+    description: OTP verification via WhatsApp using Twilio
+  - name: Authentication
+    description: User authentication and authorization
+  - name: Admins
+    description: Admin user management
+  - name: Customers
+    description: Customer user management
+  - name: Drivers
+    description: Driver user management
+  - name: Coin System
+    description: Coin requests and transactions
+  - name: Routes
+    description: Travel route management
+  - name: Vehicles
+    description: Vehicle fleet management
+  - name: Schedules
+    description: Trip schedule management
+  - name: Tickets
+    description: Ticket booking system
+  - name: Travel Documents
+    description: Travel document management
+  - name: Payment Proofs
+    description: Payment proof upload and verification system
+  - name: Driver Panel
+    description: Driver-specific endpoints
+  - name: Trip Logs
+    description: Trip logging and tracking
+  - name: Dashboard
+    description: Dashboard statistics and analytics
+  - name: Notifications
+    description: Bulk notification system
+  - name: Reports
+    description: Data export and reporting
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT authentication token
+
+  schemas:
+    # User & Role Enums
+    UserRole:
+      type: string
+      enum: [SUPER_ADMIN, ADMIN, DRIVER, CUSTOMER]
+
+    UserStatus:
+      type: string
+      enum: [ACTIVE, INACTIVE, SUSPENDED]
+
+    Gender:
+      type: string
+      enum: [MALE, FEMALE]
+      description: User gender
+
+    # OTP System
+    OtpType:
+      type: string
+      enum: [REGISTRATION, PASSWORD_RESET, PHONE_VERIFICATION]
+      description: Type of OTP verification
+
+    OtpStatus:
+      type: string
+      enum: [PENDING, VERIFIED, EXPIRED, FAILED]
+      description: Status of OTP verification
+
+    # Coin System
+    CoinRequestStatus:
+      type: string
+      enum: [PENDING, APPROVED, REJECTED]
+
+    CoinTransactionType:
+      type: string
+      enum: [TOP_UP, DEDUCTION, REFUND]
+
+    # Vehicle & Route
+    VehicleType:
+      type: string
+      enum: [EKSEKUTIF, REGULAR]
+
+    VehicleStatus:
+      type: string
+      enum: [AVAILABLE, IN_USE, MAINTENANCE, RETIRED]
+
+    # Schedule & Ticket
+    ScheduleStatus:
+      type: string
+      enum: [SCHEDULED, DEPARTED, ARRIVED, CANCELLED]
+
+    TicketStatus:
+      type: string
+      enum: [PENDING_PAYMENT, PENDING_APPROVAL, CONFIRMED, CANCELLED, COMPLETED, REFUNDED]
+      description: |
+        Ticket status lifecycle:
+        - PENDING_PAYMENT: Waiting for payment proof upload (customer app booking)
+        - PENDING_APPROVAL: Payment proof uploaded, awaiting admin approval
+        - CONFIRMED: Ticket confirmed after payment verification or direct admin booking
+        - CANCELLED: Ticket cancelled by customer or admin
+        - COMPLETED: Trip completed successfully
+        - REFUNDED: Ticket refunded after cancellation
+
+    BookingSource:
+      type: string
+      enum: [CUSTOMER_APP, ADMIN_PANEL]
+
+    # Travel Document
+    TravelDocumentStatus:
+      type: string
+      enum: [DRAFT, ISSUED, CANCELLED]
+
+    # Payment Proof
+    PaymentProofStatus:
+      type: string
+      enum: [PENDING, APPROVED, REJECTED]
+
+    # Trip Status
+    TripStatus:
+      type: string
+      enum: [ASSIGNED, READY, DEPARTED, IN_TRANSIT, REST_STOP, ARRIVED, COMPLETED, CANCELLED]
+
+    DriverStatus:
+      type: string
+      enum: [AVAILABLE, ON_TRIP, OFF_DUTY]
+
+    # Error Response
+    Error:
+      type: object
+      properties:
+        statusCode:
+          type: integer
+          example: 400
+        message:
+          type: string
+          example: Validation failed
+        error:
+          type: string
+          example: Bad Request
+
+    # Pagination
+    PaginationMeta:
+      type: object
+      properties:
+        total:
+          type: integer
+          example: 100
+        page:
+          type: integer
+          example: 1
+        limit:
+          type: integer
+          example: 10
+        totalPages:
+          type: integer
+          example: 10
+
+paths:
+  # ==================== OTP VERIFICATION ====================
+  /otp/send:
+    post:
+      tags: [OTP Verification]
+      summary: Send OTP via WhatsApp
+      description: |
+        Send a 6-digit OTP code to the specified phone number via WhatsApp using Twilio.
+
+        **Features:**
+        - OTP valid for 5 minutes
+        - Rate limiting: Maximum 1 OTP per 4 minutes
+        - Automatically expires old OTP when sending new one
+
+        **Requirements:**
+        - Valid Indonesian phone number
+        - Twilio credentials configured in environment variables
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [phone]
+              properties:
+                phone:
+                  type: string
+                  pattern: '^(\+62|62|0)[0-9]{9,12}$'
+                  example: "081234567890"
+                  description: Indonesian phone number (will be normalized to +62 format)
+      responses:
+        '200':
+          description: OTP sent successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "OTP sent successfully to your WhatsApp"
+                  expiresIn:
+                    type: integer
+                    example: 300
+                    description: OTP expiry time in seconds (5 minutes)
+                  phone:
+                    type: string
+                    example: "081234567890"
+        '400':
+          description: Bad request - Invalid phone number or OTP already sent recently
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  statusCode:
+                    type: integer
+                    example: 400
+                  message:
+                    type: string
+                    example: "OTP already sent. Please wait 240 seconds before requesting a new one."
+
+  /otp/verify:
+    post:
+      tags: [OTP Verification]
+      summary: Verify OTP code
+      description: |
+        Verify the OTP code sent to the phone number.
+
+        **Features:**
+        - Maximum 3 verification attempts
+        - OTP must be verified within 5 minutes
+        - Verified status remains valid for 30 minutes
+
+        **Important:**
+        - Phone number must be verified with OTP before registration
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [phone, code]
+              properties:
+                phone:
+                  type: string
+                  pattern: '^(\+62|62|0)[0-9]{9,12}$'
+                  example: "081234567890"
+                  description: Phone number that received the OTP
+                code:
+                  type: string
+                  pattern: '^[0-9]{6}$'
+                  minLength: 6
+                  maxLength: 6
+                  example: "123456"
+                  description: 6-digit OTP code
+      responses:
+        '200':
+          description: OTP verified successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "OTP verified successfully"
+                  verified:
+                    type: boolean
+                    example: true
+                  phone:
+                    type: string
+                    example: "081234567890"
+        '400':
+          description: Bad request - Invalid OTP, expired, or max attempts exceeded
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  statusCode:
+                    type: integer
+                    example: 400
+                  message:
+                    type: string
+                    example: "Invalid OTP code. 2 attempts remaining."
+
+  # ==================== AUTHENTICATION ====================
+  /auth/login:
+    post:
+      tags: [Authentication]
+      summary: User login
+      description: Authenticate user with phone number and receive JWT token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [phone, password]
+              properties:
+                phone:
+                  type: string
+                  pattern: '^(\+62|62|0)[0-9]{9,12}$'
+                  example: "081234567890"
+                  description: Indonesian phone number format (REQUIRED - not email)
+                password:
+                  type: string
+                  format: password
+                  minLength: 6
+                  example: Admin123
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  accessToken:
+                    type: string
+                  refreshToken:
+                    type: string
+                  user:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                      phone:
+                        type: string
+                      email:
+                        type: string
+                        nullable: true
+                      role:
+                        $ref: '#/components/schemas/UserRole'
+                      status:
+                        $ref: '#/components/schemas/UserStatus'
+                      profile:
+                        type: object
+                        nullable: true
+                        properties:
+                          id:
+                            type: string
+                          name:
+                            type: string
+                          phone:
+                            type: string
+        '401':
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /auth/register:
+    post:
+      tags: [Authentication]
+      summary: Customer registration
+      description: |
+        Register new customer account with phone number.
+
+        **IMPORTANT: OTP Verification Required**
+        - Phone number must be verified with OTP before registration
+        - Send OTP via `/otp/send` endpoint
+        - Verify OTP via `/otp/verify` endpoint
+        - Registration will fail if phone number is not verified (within 30 minutes of verification)
+
+        **Registration Flow:**
+        1. Send OTP to phone number
+        2. Verify OTP code
+        3. Register with verified phone number (within 30 minutes)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, phone, password]
+              properties:
+                name:
+                  type: string
+                  minLength: 3
+                  example: John Doe
+                phone:
+                  type: string
+                  pattern: '^(\+62|62|0)[0-9]{9,12}$'
+                  example: "081234567890"
+                  description: Indonesian phone number format
+                email:
+                  type: string
+                  format: email
+                  example: john@example.com
+                  description: Optional email address
+                password:
+                  type: string
+                  format: password
+                  minLength: 6
+                  pattern: '^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)'
+                  example: Customer123
+                  description: Must contain uppercase, lowercase, and number
+                address:
+                  type: string
+                  example: Jl. Sudirman No. 123, Jakarta
+                  description: Optional address
+                birthDate:
+                  type: string
+                  format: date
+                  example: "1990-05-15"
+                  description: Optional birth date (ISO 8601 format YYYY-MM-DD)
+                gender:
+                  $ref: '#/components/schemas/Gender'
+                  description: Optional gender
+      responses:
+        '201':
+          description: Registration successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  accessToken:
+                    type: string
+                  refreshToken:
+                    type: string
+                  user:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                      phone:
+                        type: string
+                      email:
+                        type: string
+                        nullable: true
+                      role:
+                        $ref: '#/components/schemas/UserRole'
+                      status:
+                        $ref: '#/components/schemas/UserStatus'
+                      profile:
+                        type: object
+                        properties:
+                          id:
+                            type: string
+                          name:
+                            type: string
+                          phone:
+                            type: string
+        '400':
+          description: Bad request - Phone number not verified with OTP
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  statusCode:
+                    type: integer
+                    example: 400
+                  message:
+                    type: string
+                    example: "Phone number not verified. Please verify your phone number with OTP first."
+        '409':
+          description: Phone number or email already exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /auth/forgot-password:
+    post:
+      tags: [Authentication]
+      summary: Request password reset
+      description: |
+        Send OTP code to user's WhatsApp for password reset.
+
+        **Flow:**
+        1. User provides their phone number
+        2. System verifies the phone number exists and account is active
+        3. OTP code (6 digits) is sent via WhatsApp
+        4. OTP is valid for 5 minutes
+        5. Maximum 3 verification attempts
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [phone]
+              properties:
+                phone:
+                  type: string
+                  pattern: '^(\+62|62|0)[0-9]{9,12}$'
+                  example: "081234567890"
+                  description: Phone number in Indonesian format
+      responses:
+        '200':
+          description: OTP sent successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "OTP sent successfully to your WhatsApp"
+                  expiresIn:
+                    type: number
+                    example: 300
+                    description: OTP expiry time in seconds
+                  phone:
+                    type: string
+                    example: "081234567890"
+        '400':
+          description: Bad request - User account not active or rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /auth/reset-password:
+    post:
+      tags: [Authentication]
+      summary: Reset password
+      description: |
+        Reset user password by verifying OTP code and setting new password.
+
+        **Flow:**
+        1. User provides phone number, OTP code, and new password
+        2. System verifies the OTP code
+        3. Password is updated if OTP is valid
+        4. User can login with new password
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [phone, code, newPassword]
+              properties:
+                phone:
+                  type: string
+                  pattern: '^(\+62|62|0)[0-9]{9,12}$'
+                  example: "081234567890"
+                  description: Phone number in Indonesian format
+                code:
+                  type: string
+                  pattern: '^[0-9]{6}$'
+                  minLength: 6
+                  maxLength: 6
+                  example: "123456"
+                  description: 6-digit OTP code received via WhatsApp
+                newPassword:
+                  type: string
+                  minLength: 6
+                  example: "NewPassword123"
+                  description: New password (minimum 6 characters)
+      responses:
+        '200':
+          description: Password reset successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Password has been reset successfully"
+        '400':
+          description: Bad request - Invalid or expired OTP
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /auth/refresh:
+    post:
+      tags: [Authentication]
+      summary: Refresh access token
+      description: Get new access token using refresh token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [refreshToken]
+              properties:
+                refreshToken:
+                  type: string
+                  example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+      responses:
+        '200':
+          description: Token refreshed successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  accessToken:
+                    type: string
+                  refreshToken:
+                    type: string
+                  user:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                      phone:
+                        type: string
+                      email:
+                        type: string
+                        nullable: true
+                      role:
+                        $ref: '#/components/schemas/UserRole'
+                      status:
+                        $ref: '#/components/schemas/UserStatus'
+        '401':
+          description: Invalid or expired refresh token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /auth/me:
+    get:
+      tags: [Authentication]
+      summary: Get current user profile
+      description: Retrieve authenticated user's profile information
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: User profile retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  phone:
+                    type: string
+                  email:
+                    type: string
+                    nullable: true
+                  role:
+                    $ref: '#/components/schemas/UserRole'
+                  status:
+                    $ref: '#/components/schemas/UserStatus'
+                  profile:
+                    type: object
+                    nullable: true
+                    properties:
+                      id:
+                        type: string
+                      name:
+                        type: string
+                      phone:
+                        type: string
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /auth/logout:
+    post:
+      tags: [Authentication]
+      summary: User logout
+      description: |
+        Revokes the current access token by adding it to the blacklist.
+        Once logged out, the token becomes invalid and cannot be used for subsequent requests.
+
+        **Token Revocation:**
+        - Token is immediately blacklisted in the database
+        - All subsequent requests with the same token will receive 401 Unauthorized
+        - Token remains in blacklist until its original expiration time
+
+        **Security:**
+        - Requires valid JWT authentication
+        - Only affects the current access token
+        - Refresh tokens are not automatically revoked
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Successfully logged out
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Logout successful
+        '401':
+          description: Unauthorized - Invalid or missing token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                invalidToken:
+                  value:
+                    statusCode: 401
+                    message: Invalid token
+                    error: Unauthorized
+                revokedToken:
+                  value:
+                    statusCode: 401
+                    message: Token has been revoked
+                    error: Unauthorized
+
+  # ==================== COIN SYSTEM ====================
+  /coin-requests:
+    post:
+      tags: [Coin System]
+      summary: Create coin top-up request
+      description: Admin requests coin top-up (ADMIN role only)
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [amount]
+              properties:
+                amount:
+                  type: integer
+                  minimum: 1
+                  example: 100000
+                notes:
+                  type: string
+                  example: Top-up for monthly operations
+      responses:
+        '201':
+          description: Coin request created
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    get:
+      tags: [Coin System]
+      summary: List coin requests
+      description: Get all coin requests (filtered by role)
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 10
+        - name: status
+          in: query
+          schema:
+            $ref: '#/components/schemas/CoinRequestStatus'
+      responses:
+        '200':
+          description: List of coin requests
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                  meta:
+                    $ref: '#/components/schemas/PaginationMeta'
+
+  /coin-requests/{id}/approve:
+    patch:
+      tags: [Coin System]
+      summary: Approve coin request
+      description: Approve pending coin request and add coins (SUPER_ADMIN only)
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                notes:
+                  type: string
+      responses:
+        '200':
+          description: Request approved and coins added
+        '403':
+          description: Only super admin can approve
+
+  /coin-requests/{id}/reject:
+    patch:
+      tags: [Coin System]
+      summary: Reject coin request
+      description: Reject pending coin request (SUPER_ADMIN only)
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [rejectedReason]
+              properties:
+                rejectedReason:
+                  type: string
+                  example: Insufficient justification
+      responses:
+        '200':
+          description: Request rejected
+
+  /coin-transactions:
+    get:
+      tags: [Coin System]
+      summary: List coin transactions
+      description: Get coin transaction history
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+        - name: limit
+          in: query
+          schema:
+            type: integer
+        - name: type
+          in: query
+          schema:
+            $ref: '#/components/schemas/CoinTransactionType'
+      responses:
+        '200':
+          description: List of transactions
+
+  /coin-transactions/balance:
+    get:
+      tags: [Coin System]
+      summary: Get current coin balance
+      description: Get authenticated user's coin balance
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Current balance
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  name:
+                    type: string
+                  coinBalance:
+                    type: integer
+                    example: 50000
+
+  # ==================== ROUTES ====================
+  /routes:
+    post:
+      tags: [Routes]
+      summary: Create route
+      description: Create new travel route
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [routeCode, origin, destination, basePrice]
+              properties:
+                routeCode:
+                  type: string
+                  pattern: '^[A-Z0-9]+-[A-Z0-9]+-\d+$'
+                  example: JKT-BDG-001
+                origin:
+                  type: string
+                  example: Jakarta
+                destination:
+                  type: string
+                  example: Bandung
+                distance:
+                  type: number
+                  example: 150
+                estimatedDuration:
+                  type: integer
+                  example: 180
+                  description: Duration in minutes
+                basePrice:
+                  type: integer
+                  example: 100000
+      responses:
+        '201':
+          description: Route created
+        '409':
+          description: Route code already exists
+
+    get:
+      tags: [Routes]
+      summary: List routes
+      description: Get all routes with filters
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+        - name: limit
+          in: query
+          schema:
+            type: integer
+        - name: origin
+          in: query
+          schema:
+            type: string
+        - name: destination
+          in: query
+          schema:
+            type: string
+        - name: isActive
+          in: query
+          schema:
+            type: boolean
+        - name: search
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: List of routes
+
+  /routes/{id}:
+    get:
+      tags: [Routes]
+      summary: Get route details
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Route details
+
+    patch:
+      tags: [Routes]
+      summary: Update route
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                routeCode:
+                  type: string
+                origin:
+                  type: string
+                destination:
+                  type: string
+                distance:
+                  type: number
+                estimatedDuration:
+                  type: integer
+                basePrice:
+                  type: integer
+                isActive:
+                  type: boolean
+      responses:
+        '200':
+          description: Route updated
+
+    delete:
+      tags: [Routes]
+      summary: Soft delete route
+      description: Deactivate route (SUPER_ADMIN only)
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Route deactivated
+
+  # ==================== VEHICLES ====================
+  /vehicles:
+    post:
+      tags: [Vehicles]
+      summary: Add vehicle
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [vehicleNumber, type, capacity]
+              properties:
+                vehicleNumber:
+                  type: string
+                  pattern: '^[A-Z]{1,2}\s?\d{1,4}\s?[A-Z]{1,3}$'
+                  example: B 1234 ABC
+                type:
+                  $ref: '#/components/schemas/VehicleType'
+                brand:
+                  type: string
+                  example: Mercedes-Benz
+                model:
+                  type: string
+                  example: Sprinter
+                capacity:
+                  type: integer
+                  minimum: 1
+                  example: 16
+      responses:
+        '201':
+          description: Vehicle added
+
+    get:
+      tags: [Vehicles]
+      summary: List vehicles
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+        - name: limit
+          in: query
+          schema:
+            type: integer
+        - name: type
+          in: query
+          schema:
+            $ref: '#/components/schemas/VehicleType'
+        - name: status
+          in: query
+          schema:
+            $ref: '#/components/schemas/VehicleStatus'
+      responses:
+        '200':
+          description: List of vehicles
+
+  /vehicles/available:
+    get:
+      tags: [Vehicles]
+      summary: Get available vehicles
+      description: Get all vehicles with AVAILABLE status
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Available vehicles
+
+  /vehicles/{id}/status:
+    patch:
+      tags: [Vehicles]
+      summary: Update vehicle status
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status]
+              properties:
+                status:
+                  $ref: '#/components/schemas/VehicleStatus'
+      responses:
+        '200':
+          description: Status updated
+
+  # ==================== SCHEDULES ====================
+  /schedules:
+    post:
+      tags: [Schedules]
+      summary: Create schedule
+      description: Create new trip schedule with availability validation
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [routeId, vehicleId, departureTime, price]
+              properties:
+                routeId:
+                  type: string
+                vehicleId:
+                  type: string
+                driverId:
+                  type: string
+                departureTime:
+                  type: string
+                  format: date-time
+                  example: '2025-01-10T08:00:00Z'
+                arrivalTime:
+                  type: string
+                  format: date-time
+                price:
+                  type: integer
+                  example: 120000
+                availableSeats:
+                  type: integer
+                  minimum: 1
+                  example: 16
+                  description: Available seats for booking (optional - defaults to vehicle capacity if not specified)
+                fuelCost:
+                  type: integer
+                  minimum: 0
+                  example: 300000
+                  description: Biaya BBM (optional)
+                driverWage:
+                  type: integer
+                  minimum: 0
+                  example: 200000
+                  description: Upah sopir (optional)
+                snackCost:
+                  type: integer
+                  minimum: 0
+                  example: 150000
+                  description: Biaya snack (optional)
+      responses:
+        '201':
+          description: Schedule created
+        '409':
+          description: Vehicle or driver conflict
+
+    get:
+      tags: [Schedules]
+      summary: List schedules
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+        - name: routeId
+          in: query
+          schema:
+            type: string
+        - name: vehicleId
+          in: query
+          schema:
+            type: string
+        - name: status
+          in: query
+          schema:
+            $ref: '#/components/schemas/ScheduleStatus'
+        - name: origin
+          in: query
+          schema:
+            type: string
+        - name: destination
+          in: query
+          schema:
+            type: string
+        - name: dateFrom
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: dateTo
+          in: query
+          schema:
+            type: string
+            format: date-time
+      responses:
+        '200':
+          description: List of schedules
+
+  /schedules/upcoming:
+    get:
+      tags: [Schedules]
+      summary: Get upcoming schedules
+      description: Get future schedules with available seats
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+      responses:
+        '200':
+          description: Upcoming schedules
+
+  /schedules/{id}:
+    get:
+      tags: [Schedules]
+      summary: Get schedule details
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Schedule details
+        '404':
+          description: Schedule not found
+
+    patch:
+      tags: [Schedules]
+      summary: Update schedule
+      description: Update schedule details (cannot update if already departed)
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                routeId:
+                  type: string
+                vehicleId:
+                  type: string
+                driverId:
+                  type: string
+                departureTime:
+                  type: string
+                  format: date-time
+                arrivalTime:
+                  type: string
+                  format: date-time
+                price:
+                  type: integer
+                availableSeats:
+                  type: integer
+                  minimum: 0
+                fuelCost:
+                  type: integer
+                  minimum: 0
+                  description: Biaya BBM
+                driverWage:
+                  type: integer
+                  minimum: 0
+                  description: Upah sopir
+                snackCost:
+                  type: integer
+                  minimum: 0
+                  description: Biaya snack
+      responses:
+        '200':
+          description: Schedule updated
+        '400':
+          description: Cannot update (already departed/completed)
+
+    delete:
+      tags: [Schedules]
+      summary: Delete schedule
+      description: Delete schedule (only if no tickets booked)
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Schedule deleted
+        '400':
+          description: Cannot delete (has associated tickets)
+
+  /schedules/{id}/assign-driver:
+    patch:
+      tags: [Schedules]
+      summary: Assign driver to schedule
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [driverId]
+              properties:
+                driverId:
+                  type: string
+      responses:
+        '200':
+          description: Driver assigned
+        '409':
+          description: Driver not available
+
+  /schedules/{id}/cancel:
+    patch:
+      tags: [Schedules]
+      summary: Cancel schedule
+      description: Cancel schedule (checks for active tickets)
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Schedule cancelled
+        '400':
+          description: Cannot cancel (has active tickets)
+
+  /schedules/{id}/booked-seats:
+    get:
+      tags: [Schedules]
+      summary: Get booked seats for schedule
+      description: |
+        Retrieve list of seat numbers that are already booked for a specific schedule.
+
+        **Business Logic:**
+        - Includes seats from PaymentProof with status PENDING (awaiting approval)
+        - Includes seats from PaymentProof with status APPROVED (confirmed booking)
+        - Excludes seats from PaymentProof with status REJECTED (available again)
+        - Returns unique seat numbers (no duplicates)
+        - Seat numbers are sorted in ascending order
+
+        **Use Case:**
+        - Frontend uses this to disable already booked seats in seat selection UI
+        - Prevents double booking of the same seat
+        - Real-time seat availability checking
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Schedule ID to check booked seats
+      responses:
+        '200':
+          description: List of booked seat numbers with status information
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  bookedSeats:
+                    type: array
+                    items:
+                      type: integer
+                    description: Array of seat numbers that are already booked (backward compatibility)
+                    example: [1, 2, 3, 5, 7]
+                  bookedSeatsWithStatus:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        seatNumber:
+                          type: integer
+                          description: Seat number
+                        status:
+                          type: string
+                          enum: [PENDING, APPROVED]
+                          description: Payment proof status for this seat
+                    description: Array of booked seats with their payment proof status
+                    example:
+                      - { seatNumber: 1, status: "APPROVED" }
+                      - { seatNumber: 2, status: "PENDING" }
+                      - { seatNumber: 3, status: "APPROVED" }
+              examples:
+                withBookings:
+                  summary: Schedule with several bookings
+                  value:
+                    bookedSeats: [1, 2, 3, 5, 7, 10, 12]
+                    bookedSeatsWithStatus:
+                      - { seatNumber: 1, status: "APPROVED" }
+                      - { seatNumber: 2, status: "PENDING" }
+                      - { seatNumber: 3, status: "APPROVED" }
+                      - { seatNumber: 5, status: "PENDING" }
+                      - { seatNumber: 7, status: "APPROVED" }
+                      - { seatNumber: 10, status: "PENDING" }
+                      - { seatNumber: 12, status: "APPROVED" }
+                noBookings:
+                  summary: Schedule without any bookings
+                  value:
+                    bookedSeats: []
+                    bookedSeatsWithStatus: []
+        '404':
+          description: Schedule not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  # ==================== TICKETS ====================
+  /tickets:
+    post:
+      tags: [Tickets]
+      summary: Create ticket booking
+      description: |
+        Book tickets with automatic coin deduction (10,000/passenger for admin bookings)
+        - Admin bookings: Deducts coins automatically
+        - Customer bookings: No coin involvement
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [scheduleId, bookingSource, bookerPhone, pickupAddress, dropoffAddress, passengers]
+              properties:
+                scheduleId:
+                  type: string
+                customerId:
+                  type: string
+                  description: For admin bookings on behalf of customer
+                bookingSource:
+                  $ref: '#/components/schemas/BookingSource'
+                bookerPhone:
+                  type: string
+                  pattern: '^(\+62|62|0)[0-9]{9,12}$'
+                  example: '081234567890'
+                  description: Nomor HP pemesan (wajib)
+                pickupAddress:
+                  type: string
+                  example: Jl. Sudirman No. 123, Jakarta Pusat
+                  description: Alamat jemput (wajib)
+                dropoffAddress:
+                  type: string
+                  example: Jl. Dago No. 456, Bandung
+                  description: Alamat antar (wajib)
+                passengers:
+                  type: array
+                  minItems: 1
+                  items:
+                    type: object
+                    required: [name]
+                    properties:
+                      name:
+                        type: string
+                        example: John Doe
+                      identityNumber:
+                        type: string
+                        pattern: '^\d{16}$'
+                        example: '1234567890123456'
+                      phone:
+                        type: string
+                        example: '081234567890'
+                      seatNumber:
+                        type: string
+                        example: A1
+                notes:
+                  type: string
+      responses:
+        '201':
+          description: Ticket created
+        '400':
+          description: Insufficient seats or coins
+
+    get:
+      tags: [Tickets]
+      summary: List tickets
+      description: Get tickets (filtered by role)
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+        - name: status
+          in: query
+          schema:
+            $ref: '#/components/schemas/TicketStatus'
+        - name: search
+          in: query
+          schema:
+            type: string
+          description: Search by ticket number or passenger name
+      responses:
+        '200':
+          description: List of tickets
+
+  /tickets/{id}:
+    get:
+      tags: [Tickets]
+      summary: Get ticket details
+      description: Get complete ticket with passengers
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Ticket details with passengers
+
+  /tickets/{id}/confirm:
+    patch:
+      tags: [Tickets]
+      summary: Confirm payment
+      description: Mark ticket as confirmed (paid)
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Ticket confirmed
+
+  /tickets/{id}/cancel:
+    patch:
+      tags: [Tickets]
+      summary: Cancel ticket
+      description: |
+        Cancel ticket with automatic coin refund for admin bookings
+        - Restores available seats
+        - Refunds coins for admin bookings
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Ticket cancelled and coins refunded
+
+  # ==================== TRAVEL DOCUMENTS ====================
+  /travel-documents:
+    post:
+      tags: [Travel Documents]
+      summary: Create travel document
+      description: Create draft travel document (Surat Jalan)
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [scheduleId, vehicleId, driverName, driverPhone, totalPassengers, departureDate]
+              properties:
+                scheduleId:
+                  type: string
+                vehicleId:
+                  type: string
+                driverName:
+                  type: string
+                  example: Ahmad Supardi
+                driverPhone:
+                  type: string
+                  example: '081234567890'
+                totalPassengers:
+                  type: integer
+                  minimum: 1
+                  example: 12
+                departureDate:
+                  type: string
+                  format: date-time
+                notes:
+                  type: string
+      responses:
+        '201':
+          description: Draft document created
+        '400':
+          description: Validation failed
+
+    get:
+      tags: [Travel Documents]
+      summary: List travel documents
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+        - name: status
+          in: query
+          schema:
+            $ref: '#/components/schemas/TravelDocumentStatus'
+        - name: search
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: List of documents
+
+  /travel-documents/{id}/issue:
+    patch:
+      tags: [Travel Documents]
+      summary: Issue travel document
+      description: |
+        Issue draft document with automatic coin deduction (10,000/document)
+        - Validates coin balance
+        - Deducts 10,000 coins
+        - Marks as ISSUED (final state)
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Document issued and coins deducted
+        '400':
+          description: Insufficient coin balance
+
+  /travel-documents/{id}/print:
+    get:
+      tags: [Travel Documents]
+      summary: Generate PDF
+      description: Generate and download travel document as PDF
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: PDF file
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+
+  # ==================== DRIVER PANEL ====================
+  /driver/profile:
+    get:
+      tags: [Driver Panel]
+      summary: Get driver profile
+      description: Get authenticated driver's profile and statistics
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Driver profile
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  name:
+                    type: string
+                  phone:
+                    type: string
+                  licenseNumber:
+                    type: string
+                  status:
+                    $ref: '#/components/schemas/DriverStatus'
+                  _count:
+                    type: object
+                    properties:
+                      schedules:
+                        type: integer
+                      tripLogs:
+                        type: integer
+
+  /driver/trips:
+    get:
+      tags: [Driver Panel]
+      summary: Get assigned trips
+      description: Get all trips assigned to authenticated driver
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: status
+          in: query
+          schema:
+            $ref: '#/components/schemas/ScheduleStatus'
+      responses:
+        '200':
+          description: List of assigned trips
+
+  /driver/trips/{scheduleId}:
+    get:
+      tags: [Driver Panel]
+      summary: Get trip details
+      description: Get complete trip information
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: scheduleId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Trip details
+        '400':
+          description: Not assigned to this trip
+
+  /driver/trips/{scheduleId}/passengers:
+    get:
+      tags: [Driver Panel]
+      summary: Get passenger list
+      description: Get boarding manifest for trip
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: scheduleId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Passenger manifest
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  schedule:
+                    type: object
+                  passengers:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        passengerId:
+                          type: string
+                        passengerName:
+                          type: string
+                        identityNumber:
+                          type: string
+                        phone:
+                          type: string
+                        seatNumber:
+                          type: string
+                        ticketNumber:
+                          type: string
+                        customerName:
+                          type: string
+                  summary:
+                    type: object
+                    properties:
+                      totalTickets:
+                        type: integer
+                      totalPassengers:
+                        type: integer
+
+  /driver/trips/{scheduleId}/status:
+    post:
+      tags: [Driver Panel]
+      summary: Update trip status
+      description: |
+        Update trip status with location tracking
+        - Creates trip log entry
+        - Auto-updates schedule status
+        - Supports GPS coordinates
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: scheduleId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status]
+              properties:
+                status:
+                  $ref: '#/components/schemas/TripStatus'
+                location:
+                  type: string
+                  example: Rest Area KM 45
+                latitude:
+                  type: number
+                  example: -6.200000
+                longitude:
+                  type: number
+                  example: 106.816666
+                notes:
+                  type: string
+                  example: Taking 15 minute break
+      responses:
+        '200':
+          description: Trip status updated and logged
+
+  # ==================== PAYMENT PROOFS ====================
+  /payment-proofs:
+    post:
+      tags: [Payment Proofs]
+      summary: Upload payment proof
+      description: |
+        Customer uploads payment proof for booking verification
+        - Supports image (JPG, PNG) and PDF files
+        - Maximum file size: 5MB
+        - Creates pending payment proof for admin review
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [scheduleId, bookingSource, bookerPhone, pickupAddress, dropoffAddress, passengers, paymentProof]
+              properties:
+                scheduleId:
+                  type: string
+                  description: Schedule ID for the booking
+                bookingSource:
+                  $ref: '#/components/schemas/BookingSource'
+                bookerPhone:
+                  type: string
+                  pattern: '^(\+62|62|0)[0-9]{9,12}$'
+                  example: '081234567890'
+                pickupAddress:
+                  type: string
+                  example: Jl. Sudirman No. 123, Jakarta
+                dropoffAddress:
+                  type: string
+                  example: Jl. Dago No. 456, Bandung
+                passengers:
+                  type: array
+                  items:
+                    type: object
+                    required: [name]
+                    properties:
+                      name:
+                        type: string
+                      identityNumber:
+                        type: string
+                      phone:
+                        type: string
+                      seatNumber:
+                        type: string
+                notes:
+                  type: string
+                paymentProof:
+                  type: string
+                  format: binary
+                  description: Payment proof image or PDF file (max 5MB)
+      responses:
+        '201':
+          description: Payment proof uploaded successfully
+        '400':
+          description: Invalid file or validation error
+
+    get:
+      tags: [Payment Proofs]
+      summary: Get all payment proofs (Admin only)
+      description: Retrieve all payment proofs with optional status filter
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: status
+          in: query
+          schema:
+            $ref: '#/components/schemas/PaymentProofStatus'
+          description: Filter by payment proof status
+      responses:
+        '200':
+          description: List of payment proofs
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+
+  /payment-proofs/my-proofs:
+    get:
+      tags: [Payment Proofs]
+      summary: Get customer's own payment proofs
+      description: Customer retrieves their own payment proof history
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: List of customer's payment proofs
+
+  /payment-proofs/{id}:
+    get:
+      tags: [Payment Proofs]
+      summary: Get specific payment proof
+      description: Retrieve payment proof details with role-based access control
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Payment proof details
+        '403':
+          description: Access denied
+        '404':
+          description: Payment proof not found
+
+    delete:
+      tags: [Payment Proofs]
+      summary: Delete payment proof
+      description: Customer or SUPER_ADMIN can delete payment proof
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Payment proof deleted
+        '403':
+          description: Access denied
+
+  /payment-proofs/{id}/approve:
+    patch:
+      tags: [Payment Proofs]
+      summary: Approve payment proof
+      description: |
+        Admin approves payment proof and automatically creates ticket
+        - Validates seat availability before approval
+        - Creates ticket with CONFIRMED status
+        - Deducts coins if booking source is ADMIN_PANEL
+        - Updates payment proof status to APPROVED
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                notes:
+                  type: string
+                  example: Payment verified and approved
+      responses:
+        '200':
+          description: Payment proof approved and ticket created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  paymentProof:
+                    type: object
+                  ticket:
+                    type: object
+        '400':
+          description: Cannot approve (seats not available, insufficient coins, etc.)
+
+  /payment-proofs/{id}/reject:
+    patch:
+      tags: [Payment Proofs]
+      summary: Reject payment proof
+      description: Admin rejects payment proof with reason
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [rejectedReason]
+              properties:
+                rejectedReason:
+                  type: string
+                  example: Invalid payment proof or amount mismatch
+      responses:
+        '200':
+          description: Payment proof rejected
+        '400':
+          description: Cannot reject (already processed)
+
+  # ==================== ADMINS ====================
+  /admins:
+    post:
+      tags: [Admins]
+      summary: Create new admin
+      description: SUPER_ADMIN creates new admin user (SUPER_ADMIN only)
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, phone, password]
+              properties:
+                name:
+                  type: string
+                  example: Admin User
+                phone:
+                  type: string
+                  pattern: '^(\+62|62|0)[0-9]{9,12}$'
+                  example: '081234567890'
+                email:
+                  type: string
+                  format: email
+                  example: admin@example.com
+                password:
+                  type: string
+                  format: password
+                  minLength: 6
+                  example: Admin123
+                birthDate:
+                  type: string
+                  format: date
+                  example: "1985-08-20"
+                  description: Optional birth date (ISO 8601 format)
+                gender:
+                  $ref: '#/components/schemas/Gender'
+                  description: Optional gender
+      responses:
+        '201':
+          description: Admin created successfully
+        '409':
+          description: Phone or email already exists
+
+    get:
+      tags: [Admins]
+      summary: Get all admins
+      description: Retrieve all admin users (SUPER_ADMIN only)
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 10
+        - name: search
+          in: query
+          schema:
+            type: string
+          description: Search by name, phone, or email
+      responses:
+        '200':
+          description: List of admins
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                  meta:
+                    $ref: '#/components/schemas/PaginationMeta'
+
+  /admins/profile/me:
+    get:
+      tags: [Admins]
+      summary: Get own admin profile
+      description: Admin retrieves their own profile
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Admin profile
+
+    patch:
+      tags: [Admins]
+      summary: Update own admin profile
+      description: Admin updates their own profile information
+      security:
+        - BearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                phone:
+                  type: string
+                email:
+                  type: string
+      responses:
+        '200':
+          description: Profile updated successfully
+
+  /admins/profile/image:
+    post:
+      tags: [Admins]
+      summary: Upload own profile image
+      description: Admin uploads their own profile picture
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [image]
+              properties:
+                image:
+                  type: string
+                  format: binary
+      responses:
+        '200':
+          description: Profile image uploaded
+
+    delete:
+      tags: [Admins]
+      summary: Delete own profile image
+      description: Admin deletes their own profile picture
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Profile image deleted
+
+  /admins/{id}:
+    get:
+      tags: [Admins]
+      summary: Get specific admin
+      description: Retrieve admin details (SUPER_ADMIN only)
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Admin details
+        '404':
+          description: Admin not found
+
+    patch:
+      tags: [Admins]
+      summary: Update admin
+      description: SUPER_ADMIN updates admin information
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                phone:
+                  type: string
+                email:
+                  type: string
+                birthDate:
+                  type: string
+                  format: date
+                  example: "1985-08-20"
+                  description: Birth date (ISO 8601 format)
+                gender:
+                  $ref: '#/components/schemas/Gender'
+                  description: Gender
+      responses:
+        '200':
+          description: Admin updated
+
+    delete:
+      tags: [Admins]
+      summary: Delete admin (soft delete)
+      description: SUPER_ADMIN soft deletes admin user
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Admin deleted
+
+  /admins/{id}/status:
+    patch:
+      tags: [Admins]
+      summary: Update admin status
+      description: SUPER_ADMIN updates admin account status
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status]
+              properties:
+                status:
+                  $ref: '#/components/schemas/UserStatus'
+      responses:
+        '200':
+          description: Admin status updated
+
+  /admins/{id}/image:
+    post:
+      tags: [Admins]
+      summary: Upload admin profile image
+      description: SUPER_ADMIN uploads profile image for admin
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [image]
+              properties:
+                image:
+                  type: string
+                  format: binary
+      responses:
+        '200':
+          description: Profile image uploaded
+
+    delete:
+      tags: [Admins]
+      summary: Delete admin profile image
+      description: SUPER_ADMIN deletes admin's profile image
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Profile image deleted
+
+  /admins/{id}/restore:
+    patch:
+      tags: [Admins]
+      summary: Restore deleted admin
+      description: SUPER_ADMIN restores soft-deleted admin
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Admin restored
+
+  /admins/{adminId}/coin-balance:
+    get:
+      tags: [Coin System]
+      summary: Get specific admin's coin balance
+      description: SUPER_ADMIN retrieves specific admin's coin balance
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: adminId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Admin's coin balance
+
+  /admins/{adminId}/coin-transactions:
+    get:
+      tags: [Coin System]
+      summary: Get specific admin's coin transactions
+      description: SUPER_ADMIN retrieves specific admin's transaction history
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: adminId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: page
+          in: query
+          schema:
+            type: integer
+        - name: limit
+          in: query
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Admin's transaction history
+
+  # ==================== CUSTOMERS ====================
+  /customers:
+    get:
+      tags: [Customers]
+      summary: Get all customers
+      description: Admin retrieves all customer users
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 10
+        - name: search
+          in: query
+          schema:
+            type: string
+          description: Search by name, phone, or email
+      responses:
+        '200':
+          description: List of customers
+
+  /customers/profile/me:
+    get:
+      tags: [Customers]
+      summary: Get own customer profile
+      description: Customer retrieves their own profile
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Customer profile
+
+    patch:
+      tags: [Customers]
+      summary: Update own customer profile
+      description: Customer updates their own profile
+      security:
+        - BearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                phone:
+                  type: string
+                email:
+                  type: string
+                address:
+                  type: string
+      responses:
+        '200':
+          description: Profile updated
+
+  /customers/profile/image:
+    post:
+      tags: [Customers]
+      summary: Upload own profile image
+      description: Customer uploads their profile picture
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [image]
+              properties:
+                image:
+                  type: string
+                  format: binary
+      responses:
+        '200':
+          description: Profile image uploaded
+
+    delete:
+      tags: [Customers]
+      summary: Delete own profile image
+      description: Customer deletes their profile picture
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Profile image deleted
+
+  /customers/{id}:
+    get:
+      tags: [Customers]
+      summary: Get specific customer
+      description: Admin retrieves customer details
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Customer details
+        '404':
+          description: Customer not found
+
+    patch:
+      tags: [Customers]
+      summary: Update customer
+      description: Admin updates customer information
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                phone:
+                  type: string
+                email:
+                  type: string
+                address:
+                  type: string
+                birthDate:
+                  type: string
+                  format: date
+                  example: "1990-05-15"
+                  description: Birth date (ISO 8601 format)
+                gender:
+                  $ref: '#/components/schemas/Gender'
+                  description: Gender
+      responses:
+        '200':
+          description: Customer updated
+
+  /customers/{id}/image:
+    post:
+      tags: [Customers]
+      summary: Upload customer profile image
+      description: Admin uploads profile image for customer
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [image]
+              properties:
+                image:
+                  type: string
+                  format: binary
+      responses:
+        '200':
+          description: Profile image uploaded
+
+    delete:
+      tags: [Customers]
+      summary: Delete customer profile image
+      description: Admin deletes customer's profile image
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Profile image deleted
+
+  # ==================== DRIVERS ====================
+  /drivers:
+    post:
+      tags: [Drivers]
+      summary: Create new driver
+      description: Create new driver user
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, phone, password]
+              properties:
+                name:
+                  type: string
+                  example: Driver Name
+                phone:
+                  type: string
+                  pattern: '^(\+62|62|0)[0-9]{9,12}$'
+                  example: '081234567890'
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+                  format: password
+                  minLength: 6
+                licenseNumber:
+                  type: string
+                  example: '1234567890'
+                address:
+                  type: string
+                birthDate:
+                  type: string
+                  format: date
+                  example: "1988-12-10"
+                  description: Optional birth date (ISO 8601 format)
+                gender:
+                  $ref: '#/components/schemas/Gender'
+                  description: Optional gender
+      responses:
+        '201':
+          description: Driver created
+
+    get:
+      tags: [Drivers]
+      summary: Get all drivers
+      description: Retrieve all driver users
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 10
+        - name: status
+          in: query
+          schema:
+            $ref: '#/components/schemas/DriverStatus'
+        - name: search
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: List of drivers
+
+  /drivers/profile/me:
+    get:
+      tags: [Drivers]
+      summary: Get own driver profile
+      description: Driver retrieves their own profile
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Driver profile
+
+    patch:
+      tags: [Drivers]
+      summary: Update own driver profile
+      description: Driver updates their own profile
+      security:
+        - BearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                phone:
+                  type: string
+                email:
+                  type: string
+                licenseNumber:
+                  type: string
+                address:
+                  type: string
+      responses:
+        '200':
+          description: Profile updated
+
+  /drivers/profile/image:
+    post:
+      tags: [Drivers]
+      summary: Upload own profile image
+      description: Driver uploads their profile picture
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [image]
+              properties:
+                image:
+                  type: string
+                  format: binary
+      responses:
+        '200':
+          description: Profile image uploaded
+
+    delete:
+      tags: [Drivers]
+      summary: Delete own profile image
+      description: Driver deletes their profile picture
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Profile image deleted
+
+  /drivers/{id}:
+    patch:
+      tags: [Drivers]
+      summary: Update driver
+      description: Admin updates driver information
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                phone:
+                  type: string
+                email:
+                  type: string
+                licenseNumber:
+                  type: string
+                address:
+                  type: string
+                birthDate:
+                  type: string
+                  format: date
+                  example: "1988-12-10"
+                  description: Birth date (ISO 8601 format)
+                gender:
+                  $ref: '#/components/schemas/Gender'
+                  description: Gender
+      responses:
+        '200':
+          description: Driver updated
+
+  /drivers/{id}/status:
+    patch:
+      tags: [Drivers]
+      summary: Update driver status
+      description: Update driver availability status
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status]
+              properties:
+                status:
+                  $ref: '#/components/schemas/DriverStatus'
+      responses:
+        '200':
+          description: Driver status updated
+
+  /drivers/{id}/image:
+    post:
+      tags: [Drivers]
+      summary: Upload driver profile image
+      description: Admin uploads profile image for driver
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [image]
+              properties:
+                image:
+                  type: string
+                  format: binary
+      responses:
+        '200':
+          description: Profile image uploaded
+
+    delete:
+      tags: [Drivers]
+      summary: Delete driver profile image
+      description: Admin deletes driver's profile image
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Profile image deleted
+
+  # ==================== ADDITIONAL VEHICLE ENDPOINTS ====================
+  /vehicles/{id}:
+    get:
+      tags: [Vehicles]
+      summary: Get specific vehicle
+      description: Retrieve vehicle details
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Vehicle details
+        '404':
+          description: Vehicle not found
+
+    patch:
+      tags: [Vehicles]
+      summary: Update vehicle
+      description: Update vehicle information
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                vehicleNumber:
+                  type: string
+                type:
+                  $ref: '#/components/schemas/VehicleType'
+                brand:
+                  type: string
+                model:
+                  type: string
+                capacity:
+                  type: integer
+      responses:
+        '200':
+          description: Vehicle updated
+
+    delete:
+      tags: [Vehicles]
+      summary: Delete vehicle
+      description: Delete vehicle (SUPER_ADMIN only)
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Vehicle deleted
+
+  /vehicles/{id}/image:
+    post:
+      tags: [Vehicles]
+      summary: Upload vehicle image
+      description: Upload vehicle photo
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [image]
+              properties:
+                image:
+                  type: string
+                  format: binary
+      responses:
+        '200':
+          description: Vehicle image uploaded
+
+    delete:
+      tags: [Vehicles]
+      summary: Delete vehicle image
+      description: Remove vehicle photo
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Vehicle image deleted
+
+  # ==================== ADDITIONAL TRAVEL DOCUMENT ENDPOINTS ====================
+  /travel-documents/{id}:
+    get:
+      tags: [Travel Documents]
+      summary: Get specific travel document
+      description: Retrieve travel document details
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Travel document details
+        '404':
+          description: Document not found
+
+    delete:
+      tags: [Travel Documents]
+      summary: Delete travel document
+      description: Delete travel document (SUPER_ADMIN only)
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Document deleted
+
+  /travel-documents/{id}/cancel:
+    patch:
+      tags: [Travel Documents]
+      summary: Cancel travel document
+      description: Cancel travel document (only DRAFT status)
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Document cancelled
+        '400':
+          description: Cannot cancel (already issued)
+
+  # ==================== ADDITIONAL TICKET ENDPOINTS ====================
+  /tickets/{id}:
+    delete:
+      tags: [Tickets]
+      summary: Delete ticket
+      description: Delete ticket (SUPER_ADMIN only)
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Ticket deleted
+
+  # ==================== ADDITIONAL ROUTE ENDPOINTS ====================
+  /routes/{id}/restore:
+    patch:
+      tags: [Routes]
+      summary: Restore deleted route
+      description: Restore soft-deleted route (SUPER_ADMIN only)
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Route restored
+
+  # ==================== COIN REQUEST DETAIL ====================
+  /coin-requests/{id}:
+    get:
+      tags: [Coin System]
+      summary: Get specific coin request
+      description: Retrieve coin request details
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Coin request details
+        '404':
+          description: Coin request not found
+
+  # ==================== DASHBOARD ENDPOINTS ====================
+  /dashboard/stats:
+    post:
+      tags: [Dashboard]
+      summary: Get dashboard statistics
+      description: Retrieve comprehensive dashboard statistics with various metrics
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                period:
+                  type: string
+                  enum: [today, week, month, year, custom]
+                  default: today
+                startDate:
+                  type: string
+                  format: date-time
+                endDate:
+                  type: string
+                  format: date-time
+      responses:
+        '200':
+          description: Dashboard statistics retrieved successfully
+        '401':
+          description: Unauthorized
+
+  /dashboard/revenue:
+    get:
+      tags: [Dashboard]
+      summary: Get revenue analytics
+      description: Retrieve revenue data grouped by time period
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: startDate
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: endDate
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: groupBy
+          in: query
+          schema:
+            type: string
+            enum: [day, week, month, year]
+            default: day
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 30
+      responses:
+        '200':
+          description: Revenue analytics retrieved successfully
+        '401':
+          description: Unauthorized
+
+  # ==================== COIN ANALYTICS ENDPOINTS ====================
+  /coins/health-status:
+    get:
+      tags: [Coin System]
+      summary: Get coin system health status
+      description: Retrieve comprehensive health status of the coin system
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Health status retrieved successfully
+        '401':
+          description: Unauthorized
+
+  /coins/consumption-analytics:
+    get:
+      tags: [Coin System]
+      summary: Get coin consumption analytics
+      description: Retrieve detailed analytics about coin consumption patterns
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: startDate
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: endDate
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: groupBy
+          in: query
+          schema:
+            type: string
+            enum: [hour, day, week, month]
+            default: day
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 30
+      responses:
+        '200':
+          description: Consumption analytics retrieved successfully
+        '401':
+          description: Unauthorized
+
+  /coins/bulk-topup:
+    post:
+      tags: [Coin System]
+      summary: Bulk top-up coins for multiple admins
+      description: Top-up coins for multiple admins in a single transaction
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - topups
+              properties:
+                topups:
+                  type: array
+                  items:
+                    type: object
+                    required:
+                      - adminId
+                      - amount
+                    properties:
+                      adminId:
+                        type: string
+                      amount:
+                        type: integer
+                        minimum: 1
+                      notes:
+                        type: string
+      responses:
+        '200':
+          description: Bulk top-up completed successfully
+        '400':
+          description: Invalid request or admin IDs
+        '401':
+          description: Unauthorized
+
+  /coins/predictions:
+    get:
+      tags: [Coin System]
+      summary: Get coin consumption predictions
+      description: Get predictions for future coin consumption based on historical data
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: days
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 90
+            default: 7
+          description: Number of days to predict
+        - name: historicalDays
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 365
+            default: 30
+          description: Days of historical data to use for predictions
+      responses:
+        '200':
+          description: Predictions retrieved successfully
+        '401':
+          description: Unauthorized
+
+  # ==================== NOTIFICATIONS ENDPOINTS ====================
+  /notifications/send-bulk:
+    post:
+      tags: [Notifications]
+      summary: Send bulk notifications
+      description: Send notifications to multiple recipients via various channels
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - title
+                - message
+                - recipientType
+                - channel
+              properties:
+                title:
+                  type: string
+                message:
+                  type: string
+                recipientType:
+                  type: string
+                  enum: [admin, driver, customer, specific]
+                recipientIds:
+                  type: array
+                  items:
+                    type: string
+                  description: Required if recipientType is 'specific'
+                channel:
+                  type: string
+                  enum: [sms, email, push, all]
+                link:
+                  type: string
+                metadata:
+                  type: object
+      responses:
+        '200':
+          description: Notifications sent successfully
+        '400':
+          description: Invalid request
+        '401':
+          description: Unauthorized
+
+  # ==================== REPORTS ENDPOINTS ====================
+  /reports/export:
+    get:
+      tags: [Reports]
+      summary: Export data to various formats
+      description: Export system data (tickets, transactions, revenue, etc.) to CSV, Excel, PDF, or JSON
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: type
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [tickets, coin_transactions, revenue, admins, drivers, customers, routes, schedules, payment_proofs]
+        - name: format
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [csv, excel, pdf, json]
+        - name: startDate
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: endDate
+          in: query
+          schema:
+            type: string
+            format: date-time
+      responses:
+        '200':
+          description: Data exported successfully
+        '400':
+          description: Invalid parameters
+        '401':
+          description: Unauthorized
+
+security:
+  - BearerAuth: []
