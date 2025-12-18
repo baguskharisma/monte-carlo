@@ -53,9 +53,8 @@ export function Sidebar({ isCollapsed = false, className }: SidebarProps) {
       <div className="border-t p-4">
         {!isCollapsed && (
           <div className="space-y-1">
-            <Separator className="my-2" />
             <p className="text-xs text-muted-foreground">
-              © {new Date().getFullYear()} Monte Carlo
+              © {new Date().getFullYear()} PT SCUDERIA HIVE DIGITAL
             </p>
           </div>
         )}
