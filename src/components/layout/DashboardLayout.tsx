@@ -8,7 +8,8 @@
 import { useState } from 'react';
 import { Sidebar } from './Sidebar';
 import { Header } from './Header';
-import { Sheet, SheetContent } from '@/components/ui/sheet';
+import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet';
+import { VisuallyHidden } from '@radix-ui/react-visually-hidden';
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -27,6 +28,9 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
       {/* Mobile Sidebar (Drawer) */}
       <Sheet open={isSidebarOpen} onOpenChange={setIsSidebarOpen}>
         <SheetContent side="left" className="w-64 p-0">
+          <VisuallyHidden>
+            <SheetTitle>Navigation Menu</SheetTitle>
+          </VisuallyHidden>
           <Sidebar />
         </SheetContent>
       </Sheet>

@@ -10,6 +10,7 @@ import { Coins } from 'lucide-react';
 import { useUser } from '@/stores/auth.store';
 import { isAdmin } from '@/types/user.types';
 import type { Admin } from '@/types/user.types';
+import { useCoinBalance } from '@/hooks/useCoinRequests';
 import {
   Tooltip,
   TooltipContent,
@@ -26,7 +27,10 @@ export function CoinBalanceWidget() {
   }
 
   const adminUser = user as Admin;
-  const coinBalance = adminUser.profile?.coinBalance ?? 0;
+  const { data: balanceData, isLoading } = useCoinBalance();
+  
+  // Use API balance if available, fallback to profile balance, then 0
+  const coinBalance = balanceData?.coinBalance ?? adminUser.profile?.coinBalance ?? 0;
 
   return (
     <TooltipProvider>

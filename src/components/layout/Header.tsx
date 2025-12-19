@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { UserMenu } from '@/components/navigation/UserMenu';
 import { CoinBalanceWidget } from '@/components/widgets/CoinBalanceWidget';
+import { useAdmin } from '@/hooks/useAdmins';
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -31,27 +32,64 @@ interface BreadcrumbSegment {
   isLast: boolean;
 }
 
-function generateBreadcrumbs(pathname: string): BreadcrumbSegment[] {
+// UUID pattern detection
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+function generateBreadcrumbs(pathname: string, adminName?: string | null): BreadcrumbSegment[] {
   const segments = pathname.split('/').filter(Boolean);
 
-  return segments.map((segment, index) => {
-    // Format segment for display
-    const label = segment
-      .split('-')
-      .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-      .join(' ');
+  return segments
+    .map((segment, index) => {
+      // Check if this is the last segment and it's a UUID (likely an ID)
+      const isLast = index === segments.length - 1;
+      const isUUID = UUID_PATTERN.test(segment);
+      
+      // If this is a UUID and we're on the last segment, only include if we have admin name
+      if (isLast && isUUID) {
+        if (adminName) {
+          // Use admin name if available
+          return {
+            label: adminName,
+            href: '/' + segments.slice(0, index + 1).join('/'),
+            isLast: true,
+          };
+        } else {
+          // Skip this segment if name is not available yet
+          return null;
+        }
+      }
+      
+      // Format segment for display
+      const label = segment
+        .split('-')
+        .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+        .join(' ');
 
-    return {
-      label,
-      href: '/' + segments.slice(0, index + 1).join('/'),
-      isLast: index === segments.length - 1,
-    };
-  });
+      return {
+        label,
+        href: '/' + segments.slice(0, index + 1).join('/'),
+        isLast: isLast && !isUUID, // Only mark as last if it's not a UUID
+      };
+    })
+    .filter((segment): segment is BreadcrumbSegment => segment !== null);
 }
 
 export function Header({ onMenuClick }: HeaderProps) {
   const pathname = usePathname();
-  const breadcrumbs = generateBreadcrumbs(pathname);
+  
+  // Extract admin ID from pathname if we're on admin detail page
+  const segments = pathname.split('/').filter(Boolean);
+  const isAdminDetailPage = segments[0] === 'super-admin' && segments[1] === 'admins' && segments[2];
+  const adminId = isAdminDetailPage && UUID_PATTERN.test(segments[2]) ? segments[2] : '';
+  
+  // Fetch admin data if we're on detail page
+  const { data: adminData } = useAdmin(adminId);
+  
+  // Extract admin name
+  const admin = adminData?.data || (adminData as any);
+  const adminName = admin?.name || admin?.profile?.name || null;
+  
+  const breadcrumbs = generateBreadcrumbs(pathname, adminName);
 
   return (
     <header className="sticky top-0 z-40 flex h-16 items-center gap-4 border-b bg-background px-4 md:px-6">

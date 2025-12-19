@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { Toaster } from "@/components/ui/sonner";
+import { QueryProvider } from "@/providers/QueryProvider";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -14,8 +15,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Monte Carlo Admin",
-  description: "Monte Carlo Travel Administration Panel",
+  title: "Monte Carlo",
+  description: "Travel Management Panel",
 };
 
 export default function RootLayout({
@@ -28,8 +29,10 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        {children}
-        <Toaster position="top-right" />
+        <QueryProvider>
+          {children}
+          <Toaster position="top-right" />
+        </QueryProvider>
       </body>
     </html>
   );
