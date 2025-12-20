@@ -11,7 +11,7 @@ import type {
   CoinRequestActionResponse,
   GetCoinTransactionsResponse,
 } from '@/types/coin.types'
-import type { CoinRequestStatus } from '@/lib/constants'
+import type { CoinRequestStatus, CoinTransactionType } from '@/lib/constants'
 
 /**
  * Coin Service Class
@@ -208,6 +208,102 @@ class CoinService {
 
       const response: unknown = await apiClient.get(url)
       return response as GetCoinTransactionsResponse
+    } catch (error) {
+      throw new Error(getErrorMessage(error))
+    }
+  }
+
+  /**
+   * Get current ADMIN's own coin transactions
+   * @param filters - Filter parameters (type, date range, pagination)
+   * @returns Paginated list of transactions
+   */
+  async getMyTransactions(filters?: {
+    type?: CoinTransactionType
+    startDate?: string
+    endDate?: string
+    page?: number
+    limit?: number
+  }): Promise<GetCoinTransactionsResponse> {
+    try {
+      const queryParams = new URLSearchParams()
+
+      if (filters?.type) {
+        queryParams.append('type', filters.type)
+      }
+      if (filters?.startDate) {
+        queryParams.append('startDate', filters.startDate)
+      }
+      if (filters?.endDate) {
+        queryParams.append('endDate', filters.endDate)
+      }
+      if (filters?.page) {
+        queryParams.append('page', String(filters.page))
+      }
+      if (filters?.limit) {
+        queryParams.append('limit', String(filters.limit))
+      }
+
+      const url = `${API_ENDPOINTS.COINS.TRANSACTIONS}${
+        queryParams.toString() ? `?${queryParams.toString()}` : ''
+      }`
+
+      const response: unknown = await apiClient.get(url)
+      return response as GetCoinTransactionsResponse
+    } catch (error) {
+      throw new Error(getErrorMessage(error))
+    }
+  }
+
+  /**
+   * Get current ADMIN's own coin requests
+   * @param status - Filter by status
+   * @returns List of coin requests
+   */
+  async getMyCoinRequests(params?: {
+    status?: CoinRequestStatus
+    page?: number
+    limit?: number
+  }): Promise<GetCoinRequestsResponse> {
+    try {
+      const queryParams = new URLSearchParams()
+
+      if (params?.status) {
+        queryParams.append('status', params.status)
+      }
+      if (params?.page) {
+        queryParams.append('page', String(params.page))
+      }
+      if (params?.limit) {
+        queryParams.append('limit', String(params.limit))
+      }
+
+      const url = `${API_ENDPOINTS.COINS.REQUESTS}${
+        queryParams.toString() ? `?${queryParams.toString()}` : ''
+      }`
+
+      const response: unknown = await apiClient.get(url)
+      return response as GetCoinRequestsResponse
+    } catch (error) {
+      throw new Error(getErrorMessage(error))
+    }
+  }
+
+  /**
+   * Create a new coin top-up request
+   * @param data - Request data (amount, notes)
+   * @returns Created coin request
+   */
+  async createCoinRequest(data: {
+    amount: number
+    notes?: string
+  }): Promise<{ success: boolean; data: CoinRequest; message: string }> {
+    try {
+      const response: unknown = await apiClient.post(
+        API_ENDPOINTS.COINS.REQUESTS,
+        data
+      )
+      return response as { success: boolean; data: CoinRequest; message: string }
     } catch (error) {
       throw new Error(getErrorMessage(error))
     }

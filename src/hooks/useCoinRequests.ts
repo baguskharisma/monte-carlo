@@ -10,6 +10,7 @@ import { toast } from 'sonner'
 import { coinService } from '@/services/coin.service'
 import { COIN_QUERY_KEYS } from '@/types/coin.types'
 import type { CoinRequestStatus } from '@/lib/constants'
+import type { CoinTransactionType } from '@/lib/constants'
 
 /**
  * Hook to fetch coin requests list
@@ -213,5 +214,73 @@ export function useAdminCoinBalance(adminId: string) {
     enabled: !!adminId, // Only run query if adminId is provided
     staleTime: 60000, // 1 minute
     refetchOnWindowFocus: true,
+  })
+}
+
+/**
+ * Hook to fetch current ADMIN's own transaction history
+ * @param filters - Filter parameters (type, date range, pagination)
+ */
+export function useMyTransactions(filters?: {
+  type?: CoinTransactionType
+  startDate?: string
+  endDate?: string
+  page?: number
+  limit?: number
+}) {
+  return useQuery({
+    queryKey: COIN_QUERY_KEYS.myTransactions.list(filters),
+    queryFn: () => coinService.getMyTransactions(filters),
+    staleTime: 30000, // 30 seconds - balance changes frequently
+    refetchOnWindowFocus: false, // Manual refresh only
+  })
+}
+
+/**
+ * Hook to fetch current ADMIN's own coin requests
+ * @param status - Filter by status
+ */
+export function useMyCoinRequests(status?: CoinRequestStatus) {
+  return useQuery({
+    queryKey: COIN_QUERY_KEYS.myRequests.list(status),
+    queryFn: () => coinService.getMyCoinRequests({ status }),
+    staleTime: 60000, // 1 minute
+    refetchOnWindowFocus: false,
+  })
+}
+
+/**
+ * Hook to create a new coin top-up request
+ * Creates a request for coin top-up
+ */
+export function useCreateCoinRequest() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (data: {
+      amount: number
+      notes?: string
+    }) => coinService.createCoinRequest(data),
+    onSuccess: (response) => {
+      // Invalidate relevant queries
+      queryClient.invalidateQueries({
+        queryKey: COIN_QUERY_KEYS.myRequests.lists(),
+      })
+      queryClient.invalidateQueries({
+        queryKey: COIN_QUERY_KEYS.balance.current(),
+      })
+      queryClient.invalidateQueries({
+        queryKey: COIN_QUERY_KEYS.myTransactions.lists(),
+      })
+
+      toast.success('Top-up request submitted successfully', {
+        description: `Request for ${response.data.amount.toLocaleString()} coins is pending approval`,
+      })
+    },
+    onError: (error: Error) => {
+      toast.error('Failed to submit top-up request', {
+        description: error.message || 'Please try again later',
+      })
+    },
   })
 }

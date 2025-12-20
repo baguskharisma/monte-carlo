@@ -51,11 +51,11 @@ export function SidebarMenuItem({
       {!isCollapsed && (
         <>
           <span className="flex-1">{label}</span>
-          {badge && (
+          {/* {badge && (
             <Badge variant="secondary" className="ml-auto text-xs">
               {badge}
             </Badge>
-          )}
+          )} */}
         </>
       )}
     </Link>

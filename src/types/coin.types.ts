@@ -150,7 +150,73 @@ export const COIN_QUERY_KEYS = {
     list: (adminId?: string) =>
       [...COIN_QUERY_KEYS.transactions.lists(), { adminId }] as const,
   },
+  // ADMIN's own transactions
+  myTransactions: {
+    all: ['my-coin-transactions'] as const,
+    lists: () => [...COIN_QUERY_KEYS.myTransactions.all, 'list'] as const,
+    list: (filters?: TransactionFilters) =>
+      [...COIN_QUERY_KEYS.myTransactions.lists(), filters] as const,
+  },
+  // ADMIN's own coin requests
+  myRequests: {
+    all: ['my-coin-requests'] as const,
+    lists: () => [...COIN_QUERY_KEYS.myRequests.all, 'list'] as const,
+    list: (status?: CoinRequestStatus) =>
+      [...COIN_QUERY_KEYS.myRequests.lists(), { status }] as const,
+  },
 } as const
+
+// ============================================================================
+// ADMIN Coin Request Types (for creating requests)
+// ============================================================================
+
+/**
+ * Request payload for ADMIN to create a coin top-up request
+ */
+export interface CreateCoinRequestRequest {
+  amount: number
+  notes?: string // Optional notes for the request
+}
+
+/**
+ * API Response for creating coin request
+ */
+export interface CreateCoinRequestResponse {
+  success: boolean
+  data: CoinRequest
+  message: string
+}
+
+/**
+ * Form data for coin top-up request
+ */
+export const createCoinRequestSchema = z.object({
+  amount: z
+    .number({ message: 'Amount must be a number' })
+    .min(10000, 'Minimum top-up amount is 10,000 coins')
+    .max(10000000, 'Maximum top-up amount is 10,000,000 coins'),
+  notes: z
+    .string()
+    .max(500, 'Notes must not exceed 500 characters')
+    .optional(),
+})
+
+export type CreateCoinRequestFormData = z.infer<typeof createCoinRequestSchema>
+
+// ============================================================================
+// Transaction Filtering Types
+// ============================================================================
+
+/**
+ * Filter parameters for transaction history
+ */
+export interface TransactionFilters {
+  type?: CoinTransactionType // Filter by transaction type
+  startDate?: string // ISO date string
+  endDate?: string // ISO date string
+  page?: number
+  limit?: number
+}
 
 // ============================================================================
 // Statistics Types
