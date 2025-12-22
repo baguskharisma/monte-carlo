@@ -75,7 +75,8 @@ class CoinService {
    */
   async approveCoinRequest(requestId: string): Promise<CoinRequestActionResponse> {
     try {
-      const response: unknown = await apiClient.post(
+      // Backend uses PATCH method, not POST
+      const response: unknown = await apiClient.patch(
         `${API_ENDPOINTS.COINS.REQUESTS}/${requestId}/approve`
       )
       return response as CoinRequestActionResponse
@@ -96,9 +97,11 @@ class CoinService {
     rejectionReason: string
   ): Promise<CoinRequestActionResponse> {
     try {
-      const response: unknown = await apiClient.post(
+      // Backend uses PATCH method, not POST
+      // CoinRequest uses 'rejectedReason' (WITH 'd') - different from PaymentProof
+      const response: unknown = await apiClient.patch(
         `${API_ENDPOINTS.COINS.REQUESTS}/${requestId}/reject`,
-        { rejectionReason }
+        { rejectedReason: rejectionReason }
       )
       return response as CoinRequestActionResponse
     } catch (error) {

@@ -96,9 +96,12 @@ export function useApproveCoinRequest() {
         queryKey: COIN_QUERY_KEYS.stats(),
       })
 
-      // Show success toast
+      // Show success toast with defensive coding
+      const amount = data.data?.amount
       toast.success('Coin request approved successfully', {
-        description: `${data.data.amount} coins have been credited to the admin's account`,
+        description: amount
+          ? `${amount.toLocaleString()} coins have been credited to the admin's account`
+          : 'Coins have been credited successfully',
       })
     },
     onError: (error: Error) => {
@@ -273,8 +276,12 @@ export function useCreateCoinRequest() {
         queryKey: COIN_QUERY_KEYS.myTransactions.lists(),
       })
 
+      // Show success message with amount if available
+      const amount = response.data?.amount
       toast.success('Top-up request submitted successfully', {
-        description: `Request for ${response.data.amount.toLocaleString()} coins is pending approval`,
+        description: amount
+          ? `Request for ${amount.toLocaleString()} coins is pending approval`
+          : 'Your request is pending approval',
       })
     },
     onError: (error: Error) => {

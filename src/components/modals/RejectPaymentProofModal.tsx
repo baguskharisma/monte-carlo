@@ -97,9 +97,9 @@ export function RejectPaymentProofModal({
   if (!proof) return null
 
   // Extract details
-  const customerName = proof.customer?.profile?.name || 'Unknown Customer'
-  const scheduleRoute = proof.schedule
-    ? `${(proof.schedule as any).origin} → ${(proof.schedule as any).destination}`
+  const customerName = proof.customer?.name || 'Unknown Customer'
+  const scheduleRoute = proof.schedule?.route
+    ? `${proof.schedule.route.origin} → ${proof.schedule.route.destination}`
     : 'Route not available'
 
   return (

@@ -5,7 +5,20 @@
 
 import { z } from 'zod'
 import type { CoinRequestStatus, CoinTransactionType } from '@/lib/constants'
-import type { Admin } from './user.types'
+
+// Admin interface for Coin Request responses
+// Note: API returns a flattened admin structure in coin request responses
+interface CoinRequestAdmin {
+  id: string
+  userId: string
+  name: string
+  phone: string
+  email: string | null
+  profileImageUrl: string | null
+  coinBalance: number
+  createdAt: string
+  updatedAt: string
+}
 
 // ============================================================================
 // Pagination Types
@@ -29,14 +42,14 @@ export interface PaginationInfo {
 export interface CoinRequest {
   id: string
   adminId: string
-  admin?: Admin // Populated admin details
+  admin?: CoinRequestAdmin // Populated admin details (flattened structure)
   amount: number
   proofImageUrl: string
   status: CoinRequestStatus
   requestDate: string // ISO date string
   processedDate: string | null
   processedBy: string | null // SUPER_ADMIN user ID who processed
-  processedByAdmin?: Admin // Populated super admin details
+  processedByAdmin?: CoinRequestAdmin // Populated super admin details (flattened structure)
   rejectionReason: string | null
   createdAt: string
   updatedAt: string
@@ -84,7 +97,7 @@ export interface CoinRequestActionResponse {
 export interface CoinTransaction {
   id: string
   adminId: string
-  admin?: Admin // Populated admin details
+  admin?: CoinRequestAdmin // Populated admin details (flattened structure)
   type: CoinTransactionType
   amount: number
   balanceBefore: number

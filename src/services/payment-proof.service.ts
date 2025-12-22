@@ -104,9 +104,11 @@ class PaymentProofService {
     rejectedReason: string
   ): Promise<RejectPaymentProofResponse> {
     try {
+      // Backend expects 'rejectionReason' (without 'd') based on Prisma schema
+      // API documentation shows 'rejectedReason' but actual backend uses 'rejectionReason'
       const response: unknown = await apiClient.patch(
         `${API_ENDPOINTS.PAYMENT_PROOFS}/${proofId}/reject`,
-        { rejectedReason }
+        { rejectionReason: rejectedReason }
       )
       return response as RejectPaymentProofResponse
     } catch (error) {

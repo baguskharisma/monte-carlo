@@ -5,11 +5,65 @@
 
 import { z } from 'zod'
 import type { PaymentProofStatus, BookingSource } from '@/lib/constants'
-import type { Customer } from './user.types'
 
-// Temporary interface - will be replaced when schedule.types.ts and ticket.types.ts are created
+// Customer interface for Payment Proof responses
+// Note: This is different from the full Customer type in user.types.ts
+// API returns a flattened customer structure in payment proof responses
+interface PaymentProofCustomer {
+  id: string
+  userId: string
+  name: string
+  phone: string
+  address: string | null
+  birthDate: string | null
+  gender: string | null
+  profileImageUrl: string | null
+  createdAt: string
+  updatedAt: string
+  deletedAt: string | null
+}
+
+// Temporary interfaces - will be replaced when schedule.types.ts and ticket.types.ts are created
+interface Route {
+  id: string
+  routeCode: string
+  origin: string
+  destination: string
+  distance: number
+  estimatedDuration: number
+  basePrice: number
+  isActive: boolean
+  createdAt: string
+  updatedAt: string
+}
+
+interface Vehicle {
+  id: string
+  vehicleNumber: string
+  type: string
+  brand: string
+  model: string
+  capacity: number
+  status: string
+  imageUrl: string | null
+  createdAt: string
+  updatedAt: string
+}
+
 interface Schedule {
   id: string
+  routeId: string
+  vehicleId: string
+  driverId: string
+  departureTime: string
+  arrivalTime: string | null
+  price: number
+  availableSeats: number
+  status: string
+  createdAt: string
+  updatedAt: string
+  route?: Route
+  vehicle?: Vehicle
   [key: string]: any
 }
 
@@ -72,7 +126,7 @@ export interface PaymentProof {
   updatedAt: string
 
   // Populated relations
-  customer?: Customer
+  customer?: PaymentProofCustomer
   schedule?: Schedule
   ticket?: Ticket
   passengers?: PaymentProofPassenger[]

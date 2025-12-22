@@ -96,15 +96,17 @@ export default function PaymentProofDetailPage() {
   }
 
   // Extract details
-  const customerName = proof.customer?.profile?.name || 'Unknown Customer'
-  const customerAvatar = proof.customer?.profile?.profileImageUrl
+  const customerName = proof.customer?.name || 'Unknown Customer'
+  const customerAvatar = proof.customer?.profileImageUrl
   const customerPhone = proof.customer?.phone || proof.bookerPhone
-  const scheduleRoute = proof.schedule
-    ? `${(proof.schedule as any).origin} → ${(proof.schedule as any).destination}`
+  const scheduleRoute = proof.schedule?.route
+    ? `${proof.schedule.route.origin} → ${proof.schedule.route.destination}`
     : 'Route not available'
-  const scheduleDate = proof.schedule ? (proof.schedule as any).departureDate : null
-  const scheduleTime = proof.schedule ? (proof.schedule as any).departureTime : null
-  const vehicleName = proof.schedule ? (proof.schedule as any).vehicle?.name : null
+  const scheduleDate = proof.schedule?.departureTime ? new Date(proof.schedule.departureTime).toLocaleDateString() : null
+  const scheduleTime = proof.schedule?.departureTime ? new Date(proof.schedule.departureTime).toLocaleTimeString() : null
+  const vehicleName = proof.schedule?.vehicle
+    ? `${proof.schedule.vehicle.brand} ${proof.schedule.vehicle.model} (${proof.schedule.vehicle.vehicleNumber})`
+    : null
 
   const isPending = proof.status === 'PENDING'
 

@@ -66,9 +66,10 @@ export function CoinRequestCard({
   const [imageModalOpen, setImageModalOpen] = useState(false)
 
   // Extract admin details
-  const adminName = request.admin?.profile?.name || 'Unknown Admin'
-  const adminAvatar = request.admin?.profile?.profileImageUrl
-  const adminBalance = request.admin?.profile?.coinBalance ?? 0
+  // Admin data structure is flattened in API response
+  const adminName = request.admin?.name || 'Unknown Admin'
+  const adminAvatar = request.admin?.profileImageUrl
+  const adminBalance = request.admin?.coinBalance ?? 0
 
   // Check if actions should be shown
   const canShowActions = showActions && request.status === 'PENDING'
@@ -101,13 +102,19 @@ export function CoinRequestCard({
         <CardContent className="space-y-4">
           {/* Proof Image */}
           <div className="relative aspect-video rounded-lg overflow-hidden border bg-muted">
-            <Image
-              src={request.proofImageUrl}
-              alt="Payment proof"
-              fill
-              className="object-cover cursor-pointer hover:opacity-90 transition-opacity"
-              onClick={() => setImageModalOpen(true)}
-            />
+            {request.proofImageUrl ? (
+              <Image
+                src={request.proofImageUrl}
+                alt="Payment proof"
+                fill
+                className="object-cover cursor-pointer hover:opacity-90 transition-opacity"
+                onClick={() => setImageModalOpen(true)}
+              />
+            ) : (
+              <div className="flex items-center justify-center h-full text-muted-foreground">
+                <p className="text-sm">No proof image available</p>
+              </div>
+            )}
           </div>
 
           {/* Amount */}
@@ -148,7 +155,7 @@ export function CoinRequestCard({
             <div className="text-xs text-muted-foreground pt-2 border-t">
               Processed <RelativeTime date={request.processedDate} />
               {request.processedByAdmin && (
-                <span> by {request.processedByAdmin.profile?.name}</span>
+                <span> by {request.processedByAdmin.name || 'Admin'}</span>
               )}
             </div>
           )}

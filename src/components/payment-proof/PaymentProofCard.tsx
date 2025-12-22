@@ -74,13 +74,13 @@ export function PaymentProofCard({
   const [imageModalOpen, setImageModalOpen] = useState(false)
 
   // Extract customer details
-  const customerName = proof.customer?.profile?.name || 'Unknown Customer'
-  const customerAvatar = proof.customer?.profile?.profileImageUrl
+  const customerName = proof.customer?.name || 'Unknown Customer'
+  const customerAvatar = proof.customer?.profileImageUrl
   const customerPhone = proof.customer?.phone || proof.bookerPhone
 
   // Extract schedule details
-  const scheduleRoute = proof.schedule
-    ? `${(proof.schedule as any).origin} → ${(proof.schedule as any).destination}`
+  const scheduleRoute = proof.schedule?.route
+    ? `${proof.schedule.route.origin} → ${proof.schedule.route.destination}`
     : 'Route not available'
 
   // Check if actions should be shown
