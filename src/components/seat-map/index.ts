@@ -1,0 +1,5 @@
+export { SeatMap } from './SeatMap'
+export { Seat } from './Seat'
+export { SeatLegend } from './SeatLegend'
+export { BookedSeatsDisplay } from './BookedSeatsDisplay'
+export type * from '@/types/seat-map.types'
