@@ -245,9 +245,9 @@ export const PAGINATION = {
 // ============================================================================
 
 export const DATE_FORMAT = {
-  ISO_8601: "yyyy-MM-dd'T'HH:mm:ss'Z'",
+  ISO_8601: "yyyy-MM-dd'T'HH:mm:ssXXX",
   DISPLAY: "dd MMM yyyy",
-  DISPLAY_WITH_TIME: "dd MMM yyyy HH:mm",
+  DISPLAY_WITH_TIME: "dd MMM yyyy, HH:mm",
   TIME_ONLY: "HH:mm",
 } as const
 

@@ -13,13 +13,6 @@ import {
 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
 import { cn } from "@/lib/utils"
 
 interface DataTablePaginationProps {
@@ -31,10 +24,8 @@ interface DataTablePaginationProps {
   total: number
   /** Callback when page changes */
   onPageChange: (page: number) => void
-  /** Callback when limit changes */
-  onLimitChange: (limit: number) => void
-  /** Available page size options */
-  pageSizeOptions?: number[]
+  /** Callback when limit changes (optional, not used anymore) */
+  onLimitChange?: (limit: number) => void
   /** Show page info text */
   showPageInfo?: boolean
   /** Additional CSS classes */
@@ -42,7 +33,7 @@ interface DataTablePaginationProps {
 }
 
 /**
- * DataTablePagination - Pagination controls with page size selector
+ * DataTablePagination - Pagination controls for navigating through pages
  *
  * @example
  * ```tsx
@@ -51,7 +42,6 @@ interface DataTablePaginationProps {
  *   limit={10}
  *   total={100}
  *   onPageChange={(page) => setPage(page)}
- *   onLimitChange={(limit) => setLimit(limit)}
  * />
  * ```
  */
@@ -60,8 +50,6 @@ export function DataTablePagination({
   limit,
   total,
   onPageChange,
-  onLimitChange,
-  pageSizeOptions = [10, 25, 50, 100],
   showPageInfo = true,
   className,
 }: DataTablePaginationProps) {
@@ -73,45 +61,16 @@ export function DataTablePagination({
     <div
       data-slot="data-table-pagination"
       className={cn(
-        "flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between",
+        "flex items-center justify-between",
         className
       )}
     >
-      {/* Left side: Page size selector and info */}
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-4">
-        {/* Page size selector */}
-        <div className="flex items-center gap-2">
-          <p className="text-sm text-muted-foreground whitespace-nowrap">
-            Rows per page
-          </p>
-          <Select
-            value={String(limit)}
-            onValueChange={(value) => {
-              onLimitChange(Number(value))
-              // Reset to page 1 when changing limit
-              onPageChange(1)
-            }}
-          >
-            <SelectTrigger className="h-8 w-[70px]">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {pageSizeOptions.map((size) => (
-                <SelectItem key={size} value={String(size)}>
-                  {size}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        {/* Page info */}
-        {showPageInfo && (
-          <p className="text-sm text-muted-foreground whitespace-nowrap">
-            Showing {start}-{end} of {total} results
-          </p>
-        )}
-      </div>
+      {/* Left side: Page info */}
+      {showPageInfo && (
+        <p className="text-sm text-muted-foreground whitespace-nowrap">
+          Showing {start}-{end} of {total} results
+        </p>
+      )}
 
       {/* Right side: Navigation buttons */}
       <div className="flex items-center gap-2">
