@@ -14,13 +14,18 @@ import type { SeatMapProps, SeatState } from '@/types/seat-map.types'
 
 export function SeatMap({
   scheduleId,
-  capacity = 8,
+  vehicleType = 'REGULAR',
+  capacity,
   selectedSeats,
   onSelectionChange,
   readonly = false,
   showLegend = true,
   className,
 }: SeatMapProps) {
+  // Set default capacity based on vehicle type (passenger seats only, excluding driver)
+  const defaultCapacity = vehicleType === 'EKSEKUTIF' ? 5 : 7
+  const totalCapacity = capacity || defaultCapacity
+
   // Reset selection when schedule changes
   useEffect(() => {
     onSelectionChange([])
@@ -79,8 +84,8 @@ export function SeatMap({
   const bookedSeatsWithStatus = data?.bookedSeatsWithStatus || []
   const bookedSeats = data?.bookedSeats || []
 
-  // Check if all seats are booked (excluding driver seat)
-  const availableSeatsCount = capacity - bookedSeats.length - 1
+  // Check if all seats are booked (passenger seats only, driver not counted)
+  const availableSeatsCount = totalCapacity - bookedSeats.length
   if (availableSeatsCount === 0 && !readonly) {
     return (
       <Alert>
@@ -95,11 +100,8 @@ export function SeatMap({
 
   // Compute seat state for a given seat number
   const getSeatState = (seatNumber: number): SeatState => {
-    // Seat 1 is always the driver
-    if (seatNumber === 1) return 'driver'
-
     // Check if booked with APPROVED status
-    const bookedSeat = bookedSeatsWithStatus.find(s => s.seatNumber === seatNumber)
+    const bookedSeat = bookedSeatsWithStatus.find((s) => s.seatNumber === seatNumber)
     if (bookedSeat?.status === 'APPROVED') return 'booked'
 
     // Check if pending approval
@@ -117,29 +119,25 @@ export function SeatMap({
     if (readonly) return
 
     const state = getSeatState(seatNumber)
-    if (state === 'booked' || state === 'pending' || state === 'driver') return
+    if (state === 'booked' || state === 'pending') return
 
     const newSelection = selectedSeats.includes(seatNumber)
-      ? selectedSeats.filter(s => s !== seatNumber)
+      ? selectedSeats.filter((s) => s !== seatNumber)
       : [...selectedSeats, seatNumber]
 
     onSelectionChange(newSelection)
   }
 
-  return (
-    <Card className={cn('w-full max-w-md mx-auto', className)}>
-      <CardHeader>
-        <CardTitle>Select Seats</CardTitle>
-        <CardDescription>Choose your preferred seats</CardDescription>
-      </CardHeader>
-
-      <CardContent className="space-y-6">
-        {/* Legend */}
-        {showLegend && <SeatLegend />}
-
-        {/* Seat Grid - Toyota Innova 2-3-3 Layout */}
+  // Render seat layout based on vehicle type
+  const renderSeatLayout = () => {
+    if (vehicleType === 'EKSEKUTIF') {
+      // Eksekutif Layout: [1][Driver] + [2][3] + [4][5]
+      // Row 1: [1] [Driver]
+      // Row 2: [2] [3]
+      // Row 3: [4] [5]
+      return (
         <div className="bg-gray-50 dark:bg-gray-900 rounded-xl p-4 space-y-4">
-          {/* Row 1: Driver + 1 Passenger (2 seats) */}
+          {/* Row 1: Seat 1 + Driver */}
           <div className="grid grid-cols-2 gap-3">
             <Seat
               seatNumber={1}
@@ -148,21 +146,31 @@ export function SeatMap({
               disabled={readonly}
             />
             <Seat
+              seatNumber={0}
+              state="driver"
+              onClick={() => {}}
+              disabled={true}
+            />
+          </div>
+
+          {/* Row 2: 2 seats */}
+          <div className="grid grid-cols-2 gap-3">
+            <Seat
               seatNumber={2}
               state={getSeatState(2)}
               onClick={handleSeatClick}
               disabled={readonly}
             />
-          </div>
-
-          {/* Row 2: Middle 3 seats */}
-          <div className="grid grid-cols-3 gap-3">
             <Seat
               seatNumber={3}
               state={getSeatState(3)}
               onClick={handleSeatClick}
               disabled={readonly}
             />
+          </div>
+
+          {/* Row 3: 2 seats */}
+          <div className="grid grid-cols-2 gap-3">
             <Seat
               seatNumber={4}
               state={getSeatState(4)}
@@ -176,9 +184,64 @@ export function SeatMap({
               disabled={readonly}
             />
           </div>
-
-          {/* Row 3: Back 3 seats */}
+        </div>
+      )
+    } else {
+      // Regular Layout: [1][Driver] + [2][3][4] + [5][6][7]
+      // Row 1: [1] [Driver] [empty]
+      // Row 2: [2] [3] [4]
+      // Row 3: [5] [6] [7]
+      return (
+        <div className="bg-gray-50 dark:bg-gray-900 rounded-xl p-4 space-y-4">
+          {/* Row 1: Seat 1 + Driver + empty */}
           <div className="grid grid-cols-3 gap-3">
+            <Seat
+              seatNumber={1}
+              state={getSeatState(1)}
+              onClick={handleSeatClick}
+              disabled={readonly}
+            />
+            <Seat
+              seatNumber={0}
+              state="driver"
+              onClick={() => {}}
+              disabled={true}
+            />
+            <div className="opacity-0 pointer-events-none">
+              <div className="aspect-square" />
+            </div>
+          </div>
+
+          {/* Row 2: 3 seats */}
+          <div className="grid grid-cols-3 gap-3">
+            <Seat
+              seatNumber={2}
+              state={getSeatState(2)}
+              onClick={handleSeatClick}
+              disabled={readonly}
+            />
+            <Seat
+              seatNumber={3}
+              state={getSeatState(3)}
+              onClick={handleSeatClick}
+              disabled={readonly}
+            />
+            <Seat
+              seatNumber={4}
+              state={getSeatState(4)}
+              onClick={handleSeatClick}
+              disabled={readonly}
+            />
+          </div>
+
+          {/* Row 3: 3 seats */}
+          <div className="grid grid-cols-3 gap-3">
+            <Seat
+              seatNumber={5}
+              state={getSeatState(5)}
+              onClick={handleSeatClick}
+              disabled={readonly}
+            />
             <Seat
               seatNumber={6}
               state={getSeatState(6)}
@@ -191,14 +254,27 @@ export function SeatMap({
               onClick={handleSeatClick}
               disabled={readonly}
             />
-            <Seat
-              seatNumber={8}
-              state={getSeatState(8)}
-              onClick={handleSeatClick}
-              disabled={readonly}
-            />
           </div>
         </div>
+      )
+    }
+  }
+
+  return (
+    <Card className={cn('w-full max-w-md mx-auto', className)}>
+      <CardHeader>
+        <CardTitle>Select Seats</CardTitle>
+        <CardDescription>
+          Choose your preferred seats ({vehicleType === 'EKSEKUTIF' ? 'Executive' : 'Regular'})
+        </CardDescription>
+      </CardHeader>
+
+      <CardContent className="space-y-6">
+        {/* Legend */}
+        {showLegend && <SeatLegend />}
+
+        {/* Seat Layout */}
+        {renderSeatLayout()}
 
         {/* Selected Seats Summary */}
         <BookedSeatsDisplay selectedSeats={selectedSeats} />

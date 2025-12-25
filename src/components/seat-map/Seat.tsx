@@ -85,12 +85,12 @@ export function Seat({
             className={cn(seatVariants({ state }), className)}
             onClick={handleClick}
             disabled={disabled || !isClickable}
-            aria-label={`Seat ${seatNumber}`}
+            aria-label={state === 'driver' ? 'Driver seat' : `Seat ${seatNumber}`}
             aria-pressed={state === 'selected'}
             aria-disabled={!isClickable}
           >
             <Armchair className="h-5 w-5 mb-1" />
-            <span className="font-semibold">{seatNumber}</span>
+            <span className="font-semibold">{state === 'driver' ? 'Driver' : seatNumber}</span>
           </button>
         </TooltipTrigger>
         <TooltipContent>

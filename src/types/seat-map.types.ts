@@ -1,10 +1,13 @@
 export type SeatState = 'available' | 'selected' | 'booked' | 'pending' | 'driver'
 export type SeatStatus = 'PENDING' | 'APPROVED'
+export type VehicleType = 'REGULAR' | 'EKSEKUTIF'
 
 export interface SeatMapProps {
   /** Schedule ID to fetch booked seats */
   scheduleId: string
-  /** Total vehicle capacity (default: 8 for Innova) */
+  /** Vehicle type to determine layout (REGULAR: [1][Driver]+[2-4]+[5-7], EKSEKUTIF: [1][Driver]+[2-3]+[4-5]) */
+  vehicleType?: VehicleType
+  /** Total vehicle capacity - passenger seats only, excluding driver (default: 7 for Regular, 5 for Eksekutif) */
   capacity?: number
   /** Currently selected seats (controlled) */
   selectedSeats: number[]
