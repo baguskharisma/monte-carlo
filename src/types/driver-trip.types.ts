@@ -123,6 +123,32 @@ export interface BulkCheckInRequest {
   passengerIds: string[]
 }
 
+// ==================== TRIP HISTORY ====================
+
+/**
+ * Filter parameters for trip history page
+ */
+export interface TripHistoryFilters {
+  dateFrom: string | null
+  dateTo: string | null
+  search: string | null
+  page: number
+  limit: number
+}
+
+/**
+ * Date range preset options
+ */
+export type DateRangePreset = 'last_7_days' | 'last_30_days' | 'last_3_months' | 'custom'
+
+/**
+ * Date range value
+ */
+export interface DateRange {
+  from: Date | null
+  to: Date | null
+}
+
 // ==================== ZOD SCHEMAS ====================
 
 export const updateTripStatusSchema = z.object({
@@ -151,6 +177,7 @@ export const DRIVER_TRIP_QUERY_KEYS = {
   details: () => [...DRIVER_TRIP_QUERY_KEYS.all, 'detail'] as const,
   detail: (scheduleId: string) => [...DRIVER_TRIP_QUERY_KEYS.details(), scheduleId] as const,
   manifest: (scheduleId: string) => [...DRIVER_TRIP_QUERY_KEYS.detail(scheduleId), 'manifest'] as const,
+  history: (filters?: TripHistoryFilters) => [...DRIVER_TRIP_QUERY_KEYS.all, 'history', filters] as const,
 }
 
 // ==================== HELPER FUNCTIONS ====================

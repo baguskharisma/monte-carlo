@@ -154,7 +154,7 @@ export default function DriversPage() {
       cell: (driver) => {
         // Operational status is in driver.profile.status (DriverStatus: AVAILABLE/ON_TRIP/OFF_DUTY)
         // driver.status is UserStatus (ACTIVE/INACTIVE/SUSPENDED)
-        const driverStatus = driver.profile.status || 'OFF_DUTY'
+        const driverStatus = driver.profile?.status || 'OFF_DUTY'
         return <DriverStatusBadge status={driverStatus} />
       },
     },
