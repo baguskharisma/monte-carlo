@@ -169,7 +169,7 @@ class DriverService {
         // Keep in YYYY-MM-DD format (backend will convert to DateTime)
         payload.birthDate = data.birthDate.trim()
       }
-      if (data.gender !== undefined && data.gender !== null && data.gender !== '') {
+      if (data.gender !== undefined && data.gender !== null) {
         payload.gender = data.gender
       }
       // Note: status (DriverStatus) and user status (UserStatus) use dedicated endpoints

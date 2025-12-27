@@ -3,6 +3,7 @@
  * Helper functions for status badge variants
  */
 
+import { Clock, Navigation, CheckCircle, XCircle } from 'lucide-react'
 import type { ScheduleStatus } from '@/types/schedule.types'
 import type { TicketStatus } from '@/types/ticket.types'
 
@@ -45,5 +46,32 @@ export function getTicketStatusVariant(
       return 'info'
     default:
       return 'default'
+  }
+}
+
+/**
+ * Get badge variant for trip status (alias for schedule status)
+ */
+export function getTripStatusVariant(
+  status: ScheduleStatus
+): 'default' | 'success' | 'warning' | 'destructive' | 'info' {
+  return getScheduleStatusVariant(status)
+}
+
+/**
+ * Get icon component for trip status
+ */
+export function getTripStatusIcon(status: ScheduleStatus) {
+  switch (status) {
+    case 'SCHEDULED':
+      return Clock
+    case 'DEPARTED':
+      return Navigation
+    case 'ARRIVED':
+      return CheckCircle
+    case 'CANCELLED':
+      return XCircle
+    default:
+      return Clock
   }
 }

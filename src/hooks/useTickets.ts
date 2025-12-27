@@ -15,12 +15,13 @@ import { toast } from 'sonner'
 /**
  * Get all tickets with optional filters
  */
-export function useTickets(params?: GetTicketsParams) {
+export function useTickets(params?: GetTicketsParams, options?: { enabled?: boolean }) {
   return useQuery({
     queryKey: TICKET_QUERY_KEYS.list(params),
     queryFn: () => ticketService.getTickets(params),
     staleTime: 60000, // 1 minute
     refetchOnWindowFocus: false,
+    enabled: options?.enabled ?? true,
   })
 }
 

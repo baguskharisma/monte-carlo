@@ -97,11 +97,11 @@ export default function AssignDriverPage() {
                         {driversData?.data.map((driver) => (
                           <SelectItem key={driver.id} value={driver.id}>
                             <div className="flex flex-col">
-                              <span className="font-medium">{driver.name}</span>
+                              <span className="font-medium">{driver.profile.name}</span>
                               <span className="text-sm text-muted-foreground">{driver.phone}</span>
-                              {driver.licenseNumber && (
+                              {driver.profile.licenseNumber && (
                                 <span className="text-xs text-muted-foreground">
-                                  License: {driver.licenseNumber}
+                                  License: {driver.profile.licenseNumber}
                                 </span>
                               )}
                             </div>

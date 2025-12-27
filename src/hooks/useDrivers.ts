@@ -14,6 +14,7 @@ import type {
   UpdateDriverRequest,
   GetDriversParams,
 } from '@/types/driver.types'
+import type { UserStatus, DriverStatus } from '@/types/user.types'
 
 /**
  * Hook to fetch drivers list
@@ -118,7 +119,7 @@ export function useUpdateDriver() {
       }
 
       // 2. Update account status (UserStatus) if provided
-      if (status !== undefined && status !== null && status !== '') {
+      if (status !== undefined && status !== null) {
         try {
           console.log('Updating account status to:', status)
           await driverService.updateDriverStatus(id, status)
@@ -130,7 +131,7 @@ export function useUpdateDriver() {
       }
 
       // 3. Update operational status (DriverStatus) if provided
-      if (driverStatus !== undefined && driverStatus !== null && driverStatus !== '') {
+      if (driverStatus !== undefined && driverStatus !== null) {
         try {
           console.log('Updating operational status to:', driverStatus)
           await driverService.updateDriverOperationalStatus(id, driverStatus)

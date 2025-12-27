@@ -80,7 +80,7 @@ export function RejectCoinRequestModal({
 
   if (!request) return null
 
-  const adminName = request.admin?.profile?.name || 'Unknown Admin'
+  const adminName = request.admin?.name || 'Unknown Admin'
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>

@@ -218,6 +218,10 @@ export default function EditSchedulePage() {
                   const selectedDriver = field.value && field.value !== 'none'
                     ? (driversData.data.find(d => d.id === field.value) || currentDriver)
                     : null
+                  // Handle both Driver types (from user.types.ts with profile, or from schedule.types.ts with flat structure)
+                  const driverName = selectedDriver
+                    ? ('profile' in selectedDriver ? selectedDriver.profile.name : selectedDriver.name)
+                    : null
                   return (
                     <FormItem>
                       <FormLabel>Driver (Optional)</FormLabel>
@@ -230,7 +234,7 @@ export default function EditSchedulePage() {
                             <SelectValue
                               placeholder={
                                 selectedDriver
-                                  ? `${selectedDriver.name} (${selectedDriver.phone})`
+                                  ? `${driverName} (${selectedDriver.phone})`
                                   : 'No driver'
                               }
                             />
@@ -240,7 +244,7 @@ export default function EditSchedulePage() {
                           <SelectItem value="none">No driver</SelectItem>
                           {driversData.data.map((driver) => (
                             <SelectItem key={driver.id} value={driver.id}>
-                              {driver.name} ({driver.phone})
+                              {driver.profile.name} ({driver.phone})
                             </SelectItem>
                           ))}
                         </SelectContent>

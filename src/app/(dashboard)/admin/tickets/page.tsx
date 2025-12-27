@@ -186,13 +186,13 @@ export default function TicketsPage() {
       {/* Ticket List */}
       {isLoading && <LoadingState message="Loading tickets..." />}
 
-      {error && <ErrorState message="Failed to load tickets" onRetry={() => refetch()} />}
+      {error && <ErrorState title="Failed to load tickets" description="An error occurred while loading the tickets. Please try again." onRetry={() => refetch()} />}
 
       {!isLoading && !error && (!data?.data || data.data.length === 0) && (
         <EmptyState
-          icon={<TicketIcon className="h-12 w-12" />}
+          icon={TicketIcon}
           title="No tickets found"
-          message="Tickets will appear here when created"
+          description="Tickets will appear here when created"
         />
       )}
 

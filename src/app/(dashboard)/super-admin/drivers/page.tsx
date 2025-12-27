@@ -152,9 +152,9 @@ export default function DriversPage() {
       id: 'driverStatus',
       header: 'Operational Status',
       cell: (driver) => {
-        // Operational status is in driver.status (DriverStatus: AVAILABLE/ON_TRIP/OFF_DUTY)
-        // Note: Based on Prisma schema, driver.status is DriverStatus, not driver.profile.status
-        const driverStatus = driver.status || (driver as any).driverStatus || 'OFF_DUTY'
+        // Operational status is in driver.profile.status (DriverStatus: AVAILABLE/ON_TRIP/OFF_DUTY)
+        // driver.status is UserStatus (ACTIVE/INACTIVE/SUSPENDED)
+        const driverStatus = driver.profile.status || 'OFF_DUTY'
         return <DriverStatusBadge status={driverStatus} />
       },
     },

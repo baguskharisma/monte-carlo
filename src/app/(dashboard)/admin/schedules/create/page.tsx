@@ -151,7 +151,7 @@ export default function CreateSchedulePage() {
                       <SelectContent>
                         {driversData?.data.map((driver) => (
                           <SelectItem key={driver.id} value={driver.id}>
-                            {driver.name} ({driver.phone})
+                            {driver.profile.name} ({driver.phone})
                           </SelectItem>
                         ))}
                       </SelectContent>

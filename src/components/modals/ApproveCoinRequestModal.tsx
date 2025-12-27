@@ -45,8 +45,8 @@ export function ApproveCoinRequestModal({
 }: ApproveCoinRequestModalProps) {
   if (!request) return null
 
-  const adminName = request.admin?.profile?.name || 'Unknown Admin'
-  const currentBalance = request.admin?.profile?.coinBalance ?? 0
+  const adminName = request.admin?.name || 'Unknown Admin'
+  const currentBalance = request.admin?.coinBalance ?? 0
   const newBalance = currentBalance + request.amount
 
   return (
