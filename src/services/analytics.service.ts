@@ -9,6 +9,7 @@ import type {
   GetDashboardStatsResponse,
   GetCoinTrendsResponse,
   GetRecentCoinRequestsResponse,
+  GetCoinRequestStatisticsResponse,
   GetRevenueByRouteResponse,
   GetRevenueTrendsResponse,
   GetCostBreakdownResponse,
@@ -88,6 +89,21 @@ class AnalyticsService {
 
       const response: unknown = await apiClient.get(url)
       return response as GetRecentCoinRequestsResponse
+    } catch (error) {
+      throw new Error(getErrorMessage(error))
+    }
+  }
+
+  /**
+   * Get coin request statistics
+   * Returns counts by status (pending, approved, rejected)
+   * Role-based: Super Admin sees all, Regular Admin sees only their own
+   * @returns Coin request statistics
+   */
+  async getCoinRequestStatistics(): Promise<GetCoinRequestStatisticsResponse> {
+    try {
+      const response: unknown = await apiClient.get(API_ENDPOINTS.COINS.STATISTICS)
+      return response as GetCoinRequestStatisticsResponse
     } catch (error) {
       throw new Error(getErrorMessage(error))
     }

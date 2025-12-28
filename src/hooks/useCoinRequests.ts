@@ -9,6 +9,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { coinService } from '@/services/coin.service'
 import { COIN_QUERY_KEYS } from '@/types/coin.types'
+import apiClient from '@/lib/api'
+import { API_ENDPOINTS } from '@/lib/constants'
 import type { CoinRequestStatus } from '@/lib/constants'
 import type { CoinTransactionType } from '@/lib/constants'
 
@@ -47,30 +49,24 @@ export function useCoinRequest(id: string) {
 
 /**
  * Hook to get coin request statistics (counts by status)
- * Fetches counts for pending, approved, and rejected requests
+ * Uses the new /coin-requests/statistics endpoint for better performance
  */
 export function useCoinRequestStats() {
   return useQuery({
     queryKey: COIN_QUERY_KEYS.stats(),
     queryFn: async () => {
-      // Fetch counts for all statuses in parallel
-      const [pending, approved, rejected] = await Promise.all([
-        coinService.getCoinRequests({ status: 'PENDING', limit: 1 }),
-        coinService.getCoinRequests({ status: 'APPROVED', limit: 1 }),
-        coinService.getCoinRequests({ status: 'REJECTED', limit: 1 }),
-      ])
+      // Use the new statistics endpoint (single API call instead of 3)
+      const response: unknown = await apiClient.get(API_ENDPOINTS.COINS.STATISTICS)
+      const stats = response as { pending: number; approved: number; rejected: number }
 
       return {
-        pending: pending.pagination.total,
-        approved: approved.pagination.total,
-        rejected: rejected.pagination.total,
-        total:
-          pending.pagination.total +
-          approved.pagination.total +
-          rejected.pagination.total,
+        pending: stats.pending,
+        approved: stats.approved,
+        rejected: stats.rejected,
+        total: stats.pending + stats.approved + stats.rejected,
       }
     },
-    staleTime: 300000, // 5 minutes - stats don't change frequently
+    staleTime: 60000, // 1 minute - stats change when requests are processed
     refetchInterval: false, // Disable automatic refetching
     refetchOnWindowFocus: false, // Don't refetch when window gains focus
   })

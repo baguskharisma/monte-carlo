@@ -119,21 +119,21 @@ export const createRouteSchema = z.object({
 
   distance: z
     .number({
-      invalid_type_error: 'Distance must be a number',
+      message: 'Distance must be a number',
     })
     .min(1, 'Distance must be at least 1 km')
     .max(10000, 'Distance must not exceed 10,000 km'),
 
   estimatedDuration: z
     .number({
-      invalid_type_error: 'Duration must be a number',
+      message: 'Duration must be a number',
     })
     .min(1, 'Duration must be at least 1 minute')
     .max(1440, 'Duration must not exceed 1440 minutes (24 hours)'),
 
   basePrice: z
     .number({
-      invalid_type_error: 'Base price must be a number',
+      message: 'Base price must be a number',
     })
     .min(1000, 'Base price must be at least Rp 1,000')
     .max(10000000, 'Base price must not exceed Rp 10,000,000'),
@@ -166,21 +166,21 @@ export const editRouteSchema = z.object({
 
   distance: z
     .number({
-      invalid_type_error: 'Distance must be a number',
+      message: 'Distance must be a number',
     })
     .min(1, 'Distance must be at least 1 km')
     .max(10000, 'Distance must not exceed 10,000 km'),
 
   estimatedDuration: z
     .number({
-      invalid_type_error: 'Duration must be a number',
+      message: 'Duration must be a number',
     })
     .min(1, 'Duration must be at least 1 minute')
     .max(1440, 'Duration must not exceed 1440 minutes (24 hours)'),
 
   basePrice: z
     .number({
-      invalid_type_error: 'Base price must be a number',
+      message: 'Base price must be a number',
     })
     .min(1000, 'Base price must be at least Rp 1,000')
     .max(10000000, 'Base price must not exceed Rp 10,000,000'),

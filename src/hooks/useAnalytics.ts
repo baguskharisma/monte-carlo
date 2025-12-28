@@ -57,6 +57,20 @@ export function useRecentCoinRequests(limit: number = 5) {
 }
 
 /**
+ * Hook to fetch coin request statistics
+ * @returns Statistics showing counts by status (pending, approved, rejected)
+ * Role-based: Super Admin sees all, Regular Admin sees only their own
+ */
+export function useCoinRequestStatistics() {
+  return useQuery({
+    queryKey: ANALYTICS_QUERY_KEYS.coins.statistics(),
+    queryFn: () => analyticsService.getCoinRequestStatistics(),
+    staleTime: 60000, // 1 minute - statistics change when requests are processed
+    refetchOnWindowFocus: true,
+  })
+}
+
+/**
  * Hook to fetch revenue breakdown by route
  * @param params - Optional filters (date range, sorting)
  * @returns Revenue metrics grouped by route

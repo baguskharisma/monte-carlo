@@ -113,8 +113,7 @@ export const createVehicleSchema = z.object({
     }),
 
   type: z.enum(['EKSEKUTIF', 'REGULAR'], {
-    required_error: 'Vehicle type is required',
-    invalid_type_error: 'Vehicle type must be either EKSEKUTIF or REGULAR',
+    message: 'Vehicle type must be either EKSEKUTIF or REGULAR',
   }),
 
   brand: z
@@ -131,8 +130,7 @@ export const createVehicleSchema = z.object({
 
   capacity: z
     .number({
-      required_error: 'Capacity is required',
-      invalid_type_error: 'Capacity must be a number',
+      message: 'Capacity must be a number',
     })
     .int('Capacity must be a whole number')
     .min(1, 'Capacity must be at least 1 seat')
@@ -157,7 +155,7 @@ export const editVehicleSchema = z.object({
     }),
 
   type: z.enum(['EKSEKUTIF', 'REGULAR'], {
-    required_error: 'Vehicle type is required',
+    message: 'Vehicle type is required',
   }),
 
   brand: z
@@ -174,15 +172,14 @@ export const editVehicleSchema = z.object({
 
   capacity: z
     .number({
-      required_error: 'Capacity is required',
-      invalid_type_error: 'Capacity must be a number',
+      message: 'Capacity must be a number',
     })
     .int('Capacity must be a whole number')
     .min(1, 'Capacity must be at least 1 seat')
     .max(100, 'Capacity must not exceed 100 seats'),
 
   status: z.enum(['AVAILABLE', 'IN_USE', 'MAINTENANCE', 'RETIRED'], {
-    required_error: 'Status is required',
+    message: 'Status is required',
   }),
 })
 
@@ -191,7 +188,7 @@ export const editVehicleSchema = z.object({
  */
 export const updateVehicleStatusSchema = z.object({
   status: z.enum(['AVAILABLE', 'IN_USE', 'MAINTENANCE', 'RETIRED'], {
-    required_error: 'Status is required',
+    message: 'Status is required',
   }),
 })
 

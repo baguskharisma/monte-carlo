@@ -227,6 +227,7 @@ export const API_ENDPOINTS = {
     REQUESTS: "/coin-requests",
     TRANSACTIONS: "/coin-transactions",
     BALANCE: "/coin-balance",
+    STATISTICS: "/coin-requests/statistics",
   },
   // Analytics
   ANALYTICS: {

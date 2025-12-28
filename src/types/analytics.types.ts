@@ -72,6 +72,18 @@ export interface GetRecentCoinRequestsResponse {
   data: RecentCoinRequest[]
 }
 
+/**
+ * Coin Request Statistics
+ * Shows counts by status (pending, approved, rejected)
+ */
+export interface CoinRequestStatistics {
+  pending: number
+  approved: number
+  rejected: number
+}
+
+export type GetCoinRequestStatisticsResponse = CoinRequestStatistics
+
 // ============================================================================
 // Revenue Analytics Types
 // ============================================================================
@@ -230,6 +242,7 @@ export const ANALYTICS_QUERY_KEYS = {
       ['analytics', 'coins', 'trends', params] as const,
     recentRequests: (limit?: number) =>
       ['analytics', 'coins', 'recent-requests', limit] as const,
+    statistics: () => ['analytics', 'coins', 'statistics'] as const,
   },
 
   revenue: {
