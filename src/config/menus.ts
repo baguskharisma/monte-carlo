@@ -73,7 +73,7 @@ export const MENU_CONFIG: MenuConfig = {
     {
       icon: BarChart3,
       label: 'Analytics',
-      href: '/super-admin/analytics',
+      href: '/super-admin/analytics/revenue',
     },
   ],
 

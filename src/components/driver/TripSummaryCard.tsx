@@ -101,7 +101,7 @@ export function TripSummaryCard({ trip, className }: TripSummaryCardProps) {
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">BBM</span>
                   <span className="font-medium">
-                    <FormatCurrency amount={trip.fuelCost} />
+                    <FormatCurrency value={trip.fuelCost} />
                   </span>
                 </div>
               )}
@@ -109,7 +109,7 @@ export function TripSummaryCard({ trip, className }: TripSummaryCardProps) {
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Upah Sopir</span>
                   <span className="font-medium">
-                    <FormatCurrency amount={trip.driverWage} />
+                    <FormatCurrency value={trip.driverWage} />
                   </span>
                 </div>
               )}
@@ -117,14 +117,14 @@ export function TripSummaryCard({ trip, className }: TripSummaryCardProps) {
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Snack</span>
                   <span className="font-medium">
-                    <FormatCurrency amount={trip.snackCost} />
+                    <FormatCurrency value={trip.snackCost} />
                   </span>
                 </div>
               )}
               <div className="flex justify-between border-t pt-2 font-semibold">
                 <span>Total Biaya</span>
                 <span>
-                  <FormatCurrency amount={totalCosts} />
+                  <FormatCurrency value={totalCosts} />
                 </span>
               </div>
             </div>

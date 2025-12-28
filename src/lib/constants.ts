@@ -228,6 +228,16 @@ export const API_ENDPOINTS = {
     TRANSACTIONS: "/coin-transactions",
     BALANCE: "/coin-balance",
   },
+  // Analytics
+  ANALYTICS: {
+    DASHBOARD_STATS: "/analytics/dashboard/stats",
+    COIN_TRENDS: "/analytics/coins/trends",
+    RECENT_REQUESTS: "/analytics/coins/recent-requests",
+    REVENUE_BY_ROUTE: "/analytics/revenue/by-route",
+    REVENUE_TRENDS: "/analytics/revenue/by-period",
+    COST_BREAKDOWN: "/analytics/costs/breakdown",
+    UTILIZATION_METRICS: "/analytics/schedules/utilization",
+  },
 } as const
 
 // ============================================================================
