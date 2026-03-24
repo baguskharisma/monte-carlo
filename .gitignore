@@ -41,5 +41,10 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
+<<<<<<< HEAD
 # Generated API types
 /src/generated/
+=======
+# documentation
+docs/DEVELOPMENT_TODO.md
+>>>>>>> 44fac76cb1a89256af69385d641ed87f3744a645

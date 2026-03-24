@@ -1637,6 +1637,7 @@ paths:
         '200':
           description: Ticket details with passengers
 
+<<<<<<< HEAD
     delete:
       tags: [Tickets]
       summary: Delete ticket
@@ -1653,6 +1654,8 @@ paths:
         '200':
           description: Ticket deleted
 
+=======
+>>>>>>> 44fac76cb1a89256af69385d641ed87f3744a645
   /tickets/{id}/confirm:
     patch:
       tags: [Tickets]
@@ -2666,6 +2669,49 @@ paths:
         '200':
           description: Customer updated
 
+<<<<<<< HEAD
+=======
+  /customers/{id}/user-status:
+    patch:
+      tags: [Customers]
+      summary: Update customer account status
+      description: Admin updates customer user account status (ACTIVE, INACTIVE, SUSPENDED)
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Customer ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status]
+              properties:
+                status:
+                  $ref: '#/components/schemas/UserStatus'
+      responses:
+        '200':
+          description: Customer account status updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Customer account status updated successfully"
+                  data:
+                    type: object
+        '404':
+          description: Customer not found
+
+>>>>>>> 44fac76cb1a89256af69385d641ed87f3744a645
   /customers/{id}/image:
     post:
       tags: [Customers]
@@ -2856,6 +2902,77 @@ paths:
           description: Profile image deleted
 
   /drivers/{id}:
+<<<<<<< HEAD
+=======
+    get:
+      tags: [Drivers]
+      summary: Get driver detail
+      description: Admin retrieves detailed information about a specific driver
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Driver ID
+      responses:
+        '200':
+          description: Driver details retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  userId:
+                    type: string
+                  name:
+                    type: string
+                  phone:
+                    type: string
+                  licenseNumber:
+                    type: string
+                  address:
+                    type: string
+                  birthDate:
+                    type: string
+                    format: date
+                  gender:
+                    $ref: '#/components/schemas/Gender'
+                  status:
+                    $ref: '#/components/schemas/DriverStatus'
+                  profileImageUrl:
+                    type: string
+                    nullable: true
+                  user:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                      phone:
+                        type: string
+                      email:
+                        type: string
+                      status:
+                        $ref: '#/components/schemas/UserStatus'
+                      role:
+                        $ref: '#/components/schemas/UserRole'
+                      birthDate:
+                        type: string
+                      gender:
+                        $ref: '#/components/schemas/Gender'
+                      createdAt:
+                        type: string
+                        format: date-time
+                      updatedAt:
+                        type: string
+                        format: date-time
+        '404':
+          description: Driver not found
+>>>>>>> 44fac76cb1a89256af69385d641ed87f3744a645
     patch:
       tags: [Drivers]
       summary: Update driver
@@ -2895,12 +3012,45 @@ paths:
       responses:
         '200':
           description: Driver updated
+<<<<<<< HEAD
+=======
+    delete:
+      tags: [Drivers]
+      summary: Delete driver
+      description: Admin soft deletes a driver account
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Driver ID
+      responses:
+        '200':
+          description: Driver deleted successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Driver deleted successfully"
+        '404':
+          description: Driver not found
+>>>>>>> 44fac76cb1a89256af69385d641ed87f3744a645
 
   /drivers/{id}/status:
     patch:
       tags: [Drivers]
       summary: Update driver status
+<<<<<<< HEAD
       description: Update driver availability status
+=======
+      description: Update driver availability status (AVAILABLE, ON_TRIP, OFF_DUTY)
+>>>>>>> 44fac76cb1a89256af69385d641ed87f3744a645
       security:
         - BearerAuth: []
       parameters:
@@ -2923,6 +3073,49 @@ paths:
         '200':
           description: Driver status updated
 
+<<<<<<< HEAD
+=======
+  /drivers/{id}/user-status:
+    patch:
+      tags: [Drivers]
+      summary: Update driver account status
+      description: Admin updates driver user account status (ACTIVE, INACTIVE, SUSPENDED)
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Driver ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status]
+              properties:
+                status:
+                  $ref: '#/components/schemas/UserStatus'
+      responses:
+        '200':
+          description: Driver account status updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Driver account status updated successfully"
+                  data:
+                    type: object
+        '404':
+          description: Driver not found
+
+>>>>>>> 44fac76cb1a89256af69385d641ed87f3744a645
   /drivers/{id}/image:
     post:
       tags: [Drivers]
@@ -2967,6 +3160,39 @@ paths:
         '200':
           description: Profile image deleted
 
+<<<<<<< HEAD
+=======
+  /drivers/{id}/restore:
+    patch:
+      tags: [Drivers]
+      summary: Restore deleted driver
+      description: Admin restores a soft-deleted driver account
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Driver ID
+      responses:
+        '200':
+          description: Driver restored successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Driver restored successfully"
+                  data:
+                    type: object
+        '404':
+          description: Deleted driver not found
+
+>>>>>>> 44fac76cb1a89256af69385d641ed87f3744a645
   # ==================== ADDITIONAL VEHICLE ENDPOINTS ====================
   /vehicles/{id}:
     get:
@@ -3134,6 +3360,27 @@ paths:
         '400':
           description: Cannot cancel (already issued)
 
+<<<<<<< HEAD
+=======
+  # ==================== ADDITIONAL TICKET ENDPOINTS ====================
+  /tickets/{id}:
+    delete:
+      tags: [Tickets]
+      summary: Delete ticket
+      description: Delete ticket (SUPER_ADMIN only)
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Ticket deleted
+
+>>>>>>> 44fac76cb1a89256af69385d641ed87f3744a645
   # ==================== ADDITIONAL ROUTE ENDPOINTS ====================
   /routes/{id}/restore:
     patch:
